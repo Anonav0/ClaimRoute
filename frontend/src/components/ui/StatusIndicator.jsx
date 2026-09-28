@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import {
   RefreshCw,
   Server,
+  Database,
   CheckCircle2,
   AlertCircle,
   Loader2,
@@ -20,6 +21,8 @@ export function StatusIndicator({
   const isConnected = status === "connected";
   const isChecking = status === "checking";
   const isError = status === "error";
+  const firestoreStatus = data?.services?.firestore || "unconfigured";
+  const isFirestoreHealthy = firestoreStatus === "healthy";
 
   return (
     <div className="status-indicator-container">
@@ -47,7 +50,7 @@ export function StatusIndicator({
             <div className="status-popover-header">
               <div className="status-popover-title">
                 <Server size={15} />
-                <span>Backend Health Diagnostic</span>
+                <span>System Health & Services</span>
               </div>
               <button
                 onClick={onRefresh}
@@ -61,12 +64,25 @@ export function StatusIndicator({
 
             <div className="status-popover-body">
               <div className="status-row">
-                <span className="label">Status:</span>
+                <span className="label">API Gateway:</span>
                 <span className={`value-badge ${status}`}>
                   {isConnected && <CheckCircle2 size={13} />}
                   {isError && <AlertCircle size={13} />}
                   {isChecking && <Loader2 size={13} className="spin" />}
-                  <span>{status.toUpperCase()}</span>
+                  <span>
+                    {status === "connected" ? "ONLINE" : status.toUpperCase()}
+                  </span>
+                </span>
+              </div>
+
+              {/* Firestore Service Status */}
+              <div className="status-row">
+                <span className="label">Cloud Firestore:</span>
+                <span
+                  className={`value-badge ${isFirestoreHealthy ? "connected" : "checking"}`}
+                >
+                  <Database size={12} />
+                  <span>{firestoreStatus.toUpperCase()}</span>
                 </span>
               </div>
 

@@ -1,17 +1,21 @@
 {
   "name": "claimroute-backend",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "ClaimRoute Backend - Address-Free Claim & Routing Logistics Engine",
   "main": "src/server.js",
   "type": "module",
   "scripts": {
     "dev": "nodemon src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "db:verify": "node src/scripts/verifyDb.js",
+    "seed": "node src/scripts/verifyDb.js",
+    "test": "node --test"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "firebase-admin": "^13.1.0",
     "helmet": "^8.0.0"
   },
   "devDependencies": {

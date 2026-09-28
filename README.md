@@ -2,18 +2,19 @@
 
 ClaimRoute is a fulfillment and delivery-routing platform where a sender can initiate a fulfillment or gift order without having to solicit or store the recipient's sensitive delivery address upfront. Instead, the recipient receives a one-time cryptographic claim link to supply their delivery preferences and address securely.
 
-> **Current Status**: **Phase 1 (Project Foundation & Initial Setup)**. This repository currently contains the foundational architecture, client-server communication channels, and health check APIs. Business workflows, database persistence, and AI features will be implemented incrementally in subsequent phases.
+> **Current Status**: **Phase 2 (Firebase & Firestore Database Foundation)**. This repository contains the complete full-stack foundation, the warm consumer-first design system, and the server-mediated Firebase Admin SDK & Cloud Firestore persistence layer. Business workflows and AI extraction will be implemented in subsequent phases.
 
 ---
 
-## Current Features (Phase 1)
+## Current Features (Phase 1, 1.5 & 2)
 
-- **Frontend Client**: Modern React + Vite application with clean modular layout, custom hooks, and live backend connection monitoring.
-- **Backend Server**: Modular Node.js + Express REST service with Route-Controller-Service layered architecture.
-- **Security & Headers**: Helmet HTTP security headers and environment-driven CORS configuration.
-- **Centralized Error Handling**: Unified operational error structure (`AppError`, 404 handler, standard JSON error responses without stack leaks).
-- **Health Check API**: `GET /api/health` providing service status and backend timestamp.
-- **Git & Environment Hygiene**: Explicit `.gitignore` and template `.env.example` configurations.
+- **Frontend Client**: Modern React + Vite application with design tokens, warm consumer landing page, accessible components (`Button`, `Card`, `Badge`, `Modal`), and integrated backend/database status indicator.
+- **Backend Server**: Modular Node.js + Express REST service with Route-Controller-Service-Repository layered architecture.
+- **Persistence Layer**: Cloud Firestore integration via `firebase-admin` with automatic server timestamps (`FieldValue.serverTimestamp()`) and snapshot serializers.
+- **Repository Pattern**: Centralized `BaseRepository` with typed domain repositories (`UserRepository`, `OrderRepository`, `ClaimTokenRepository`, `RecipientRepository`, `DeliveryConstraintRepository`, `RoutingRequestRepository`).
+- **Security & Firestore Rules**: Server-first architecture; `firestore.rules` enforces default-deny for direct browser access, keeping PII secure.
+- **Health Check API**: `GET /api/health` reports status of both API gateway and Cloud Firestore connection.
+- **Test Suite**: Native `node:test` suite verifying repository initialization, timestamp serializers, and health probes.
 
 ---
 
@@ -24,58 +25,129 @@ ClaimRoute is a fulfillment and delivery-routing platform where a sender can ini
   - Vite (v6)
   - React Router DOM (v6)
   - Lucide React (Icons)
-  - Modern CSS (Custom variables, responsive layout)
+  - Modern CSS (Tokens, responsive design)
 - **Backend**:
   - Node.js (v20+)
   - Express.js (v4)
+  - Firebase Admin SDK (`firebase-admin` v13)
+  - Cloud Firestore
   - Helmet (HTTP security headers)
   - CORS (Cross-Origin Resource Sharing)
   - Dotenv (Environment variable management)
-  - Nodemon (Development runtime reload)
+  - Native Node Test Runner (`node:test`)
 
 ---
 
-## Project Structure
+## Database Architecture
+
+ClaimRoute utilizes a collection structure where all client access is mediated through the backend:
 
 ```text
-claimroute/
-├── frontend/                     # React + Vite client application
-│   ├── src/
-│   │   ├── components/           # Reusable UI components (Navbar, StatusCard, etc.)
-│   │   ├── pages/                # Top-level view pages (HomePage)
-│   │   ├── services/             # API client and health service abstractions
-│   │   ├── hooks/                # React custom hooks (useHealthCheck)
-│   │   ├── utils/                # Constants and helpers
-│   │   ├── types/                # JSDoc type definitions
-│   │   ├── App.jsx               # Main application router and shell
-│   │   ├── App.css               # Application layout styling
-│   │   ├── index.css             # Design tokens and base styles
-│   │   └── main.jsx              # Application entry point
-│   ├── public/                   # Static assets (favicons, etc.)
-│   ├── .env.example              # Environment variables template
-│   ├── package.json              # Frontend dependencies and scripts
-│   └── vite.config.js            # Vite build configuration
-│
-├── backend/                      # Express.js REST API
-│   ├── src/
-│   │   ├── config/               # Configuration loading and validation (env.js)
-│   │   ├── controllers/          # HTTP request/response controllers
-│   │   ├── routes/               # API route definitions
-│   │   ├── services/             # Business logic layer (health.service.js)
-│   │   ├── repositories/         # Data access layer (Firestore in Phase 2)
-│   │   ├── middleware/           # Express middleware (CORS, errors, 404)
-│   │   ├── validators/           # Request schema validators (subsequent phases)
-│   │   ├── utils/                # Utilities and structured logger
-│   │   ├── errors/               # Centralized error classes (AppError)
-│   │   ├── app.js                # Express app setup and middleware chain
-│   │   └── server.js             # HTTP server entry point & graceful shutdown
-│   ├── .env.example              # Backend environment template
-│   └── package.json              # Backend dependencies and scripts
-│
-├── docs/                         # Architecture documentation and roadmap
-├── .gitignore                    # Version control ignore rules
-├── LICENSE.md                    # License terms
-└── README.md                     # Project overview and setup instructions
+users/                        # Senders, Operations, and Admin accounts
+├── id                        # Unique User ID
+├── email                     # User email address
+├── displayName               # User full name
+├── role                      # SENDER | OPERATIONS | ADMIN
+├── createdAt                 # Server timestamp
+└── updatedAt                 # Server timestamp
+
+orders/                       # Fulfillment & gift order records
+├── id                        # Unique Order ID
+├── senderId                  # Reference to users/{userId}
+├── item                      # Item / gift description
+├── quantity                  # Item count
+├── status                    # CREATED | CLAIM_PENDING | CLAIMED | PROCESSING |
+│                             # ROUTING_READY | FULFILLMENT_READY | COMPLETED | CANCELLED | EXPIRED
+├── createdAt                 # Order creation timestamp
+├── updatedAt                 # Last update timestamp
+└── claimedAt                 # Recipient claim timestamp (when claimed)
+
+claimTokens/                  # Cryptographic one-time claim tokens
+├── tokenHash                 # Primary Key: SHA-256 hash of the secret URL token
+├── orderId                   # Reference to orders/{orderId}
+├── expiresAt                 # Expiration timestamp
+├── used                      # Boolean flag indicating consumption
+├── usedAt                    # Timestamp when token was consumed
+└── createdAt                 # Creation timestamp
+
+recipients/                   # Recipient delivery details (Protected PII)
+├── id                        # Recipient record ID
+├── orderId                   # Reference to orders/{orderId}
+├── name                      # Recipient full name
+├── address                   # Structured object (line1, line2, city, state, postalCode, country)
+├── phone                     # Recipient contact number
+├── deliveryNotes             # Freeform notes (e.g. "Leave at back door")
+├── createdAt                 # Creation timestamp
+└── updatedAt                 # Last update timestamp
+
+deliveryConstraints/          # Normalized constraints (extracted via LLM in Phase 4)
+├── id                        # Constraint record ID
+├── orderId                   # Reference to orders/{orderId}
+├── deliveryStartTime         # Time window start
+├── deliveryEndTime           # Time window end
+├── accessCode                # Gate or callbox code
+├── accessInstructions        # Gate/callbox instructions
+├── dietaryConstraints        # Dietary preferences / perishable flags
+├── deliveryInstructions      # Structured drop-off notes
+├── createdAt                 # Extraction timestamp
+└── updatedAt                 # Last update timestamp
+
+routingRequests/              # Dispatch requests for courier routing (Phase 5)
+├── id                        # Request ID
+├── orderId                   # Reference to orders/{orderId}
+├── status                    # Routing preparation state
+├── createdAt                 # Creation timestamp
+└── updatedAt                 # Last update timestamp
+```
+
+---
+
+## Firebase & Firestore Setup
+
+### 1. Create a Firebase Project
+
+1. Open the [Firebase Console](https://console.firebase.google.com/) and create a new project (e.g., `claimroute`).
+2. Navigate to **Build > Firestore Database** and click **Create Database**.
+3. Choose your preferred region and start in **Production mode** (our `firestore.rules` enforces secure access).
+
+### 2. Generate Service Account Credentials
+
+1. In Firebase Console, go to **Project Settings > Service Accounts**.
+2. Click **Generate New Private Key** and download the JSON file.
+3. Extract `project_id`, `client_email`, and `private_key` into `backend/.env`.
+
+### 3. Local Development & Emulator Support
+
+For offline local development without active GCP credentials:
+
+- Set `FIRESTORE_EMULATOR_HOST=127.0.0.1:8080` in `backend/.env`.
+- Run the local emulator via Firebase tools using `firebase.json` and `firestore.rules`.
+
+---
+
+## Environment Variables
+
+### Backend (`backend/.env`)
+
+```env
+# Server Runtime
+NODE_ENV=development
+PORT=5000
+CORS_ORIGIN=http://localhost:5173
+
+# Firebase Admin SDK Configuration
+FIREBASE_PROJECT_ID=your-firebase-project-id
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxx@your-project-id.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC...\n-----END PRIVATE KEY-----\n"
+
+# Optional: Local Firestore Emulator
+# FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
+```
+
+### Frontend (`frontend/.env`)
+
+```env
+VITE_API_BASE_URL=http://localhost:5000/api
 ```
 
 ---
@@ -87,106 +159,73 @@ claimroute/
 - **Node.js** `>= 20.0.0`
 - **npm** `>= 10.0.0`
 
-### 2. Backend Setup
+### 2. Backend Setup & Verification
 
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Create your local environment file:
-   ```bash
-   cp .env.example .env
-   ```
-4. Start the backend development server:
-   ```bash
-   npm run dev
-   ```
-   The backend will be running at `http://localhost:5000`.
+```bash
+cd backend
+npm install
+cp .env.example .env
+# Edit .env with your Firebase configuration
+
+# Run unit tests (verifies repository layer and health service)
+npm test
+
+# Start development server
+npm run dev
+```
+
+The backend starts at `http://localhost:5000`.
 
 ### 3. Frontend Setup
 
-1. In a separate terminal, navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Create your local environment file:
-   ```bash
-   cp .env.example .env
-   ```
-4. Start the frontend development server:
-   ```bash
-   npm run dev
-   ```
-   The frontend will be available at `http://localhost:5173`.
+```bash
+cd frontend
+npm install
+cp .env.example .env
+npm run dev
+```
+
+The client will be running at `http://localhost:5173`.
 
 ---
 
 ## API Documentation
 
-### Health Check
+### Health Check (`GET /api/health`)
 
-Checks backend server operational status.
-
-- **URL**: `/api/health`
-- **Method**: `GET`
-- **Authentication**: None
-
-#### Successful Response (`200 OK`)
+Returns system status and services connectivity:
 
 ```json
 {
   "success": true,
   "message": "ClaimRoute API is running",
-  "timestamp": "2026-09-28T15:56:52.000Z"
-}
-```
-
-#### Error Response Format
-
-All API errors return a standard JSON structure without leaking internal traces:
-
-```json
-{
-  "success": false,
-  "error": {
-    "code": "NOT_FOUND",
-    "message": "Cannot GET /api/unknown"
-  }
+  "services": {
+    "api": "healthy",
+    "firestore": "healthy"
+  },
+  "timestamp": "2026-09-28T16:29:23.428Z"
 }
 ```
 
 ---
 
-## Development Status & Roadmap
+## Development Roadmap
 
-ClaimRoute is constructed deliberately in phases:
-
-| Phase       | Description                                           | Status        |
-| :---------- | :---------------------------------------------------- | :------------ |
-| **Phase 1** | Project Foundation, React+Vite, Express, Health Check | **Completed** |
-| **Phase 2** | Firebase Firestore Setup, Data Models, Repositories   | Queued        |
-| **Phase 3** | Cryptographic Tokenized Claim Engine & Recipient Form | Queued        |
-| **Phase 4** | LangChain & Pydantic AI Extraction for Delivery Notes | Queued        |
-| **Phase 5** | Fulfillment Readiness Evaluation & Operations View    | Queued        |
+| Phase         | Description                                                       | Status        |
+| :------------ | :---------------------------------------------------------------- | :------------ |
+| **Phase 1**   | Project Foundation, React+Vite, Express, Health Check             | **Completed** |
+| **Phase 1.5** | Welcoming UI, Design Tokens, Responsive Foundation                | **Completed** |
+| **Phase 2**   | Firebase Admin SDK, Cloud Firestore, Repositories                 | **Completed** |
+| **Phase 3**   | Cryptographic One-Time Claim Token Engine & Recipient Intake Form | Queued        |
+| **Phase 4**   | LangChain & Pydantic AI Extraction for Delivery Notes             | Queued        |
+| **Phase 5**   | Fulfillment Readiness Evaluation & Operations Dispatch            | Queued        |
 
 ---
 
 ## License
 
-This project is licensed under the **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0)**. See the [`LICENSE.md`](file:///home/swarnavo/Desktop/PROJECTS/ClaimRoute/LICENSE.md) file for complete terms.
+This project is licensed under the **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0)**. See [`LICENSE.md`](file:///home/swarnavo/Desktop/PROJECTS/ClaimRoute/LICENSE.md) for terms.
 
-## Contact
+## Contact & Author
 
-For questions or support, please open an issue or contact the maintainer at: `swarnavokhanra@gmail.com`
-
-## Author & Generation Statement
-
-This project was authored and is maintained by **Swarnavo Khanra**.
+Maintained by **Swarnavo Khanra** (`swarnavokhanra@gmail.com`).
