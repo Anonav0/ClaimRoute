@@ -2,7 +2,7 @@
 
 ClaimRoute is a fulfillment and delivery-routing platform where a sender can initiate a fulfillment or gift order without having to solicit or store the recipient's sensitive delivery address upfront. Instead, the recipient receives a one-time cryptographic claim link to supply their delivery preferences and address securely.
 
-> **Current Status**: **Phase 6 (Security Hardening)**. This repository contains the complete full-stack foundation, the warm consumer-first design system, Cloud Firestore persistence, sender order management, secure claim token infrastructure, the end-to-end Recipient Claim Experience, and comprehensive **Security Hardening** (Firestore deny-by-default rules, sender authorization abstraction, public rate limiting, strict referrer policy, mass assignment protection, recursive log redaction, production error sanitization, response DTO mappers, and fail-fast environment validation).
+> **Current Status**: **Phase 7 (AI Delivery Extraction)**. This repository contains the complete full-stack foundation, consumer-first warm UI, Cloud Firestore persistence, sender order management, secure claim token infrastructure, recipient claim intake, security hardening, and the **AI Delivery Extraction Pipeline** (LangChain orchestration, LLM provider integration, Pydantic v2 schema validation, anti-prompt injection defenses, asynchronous non-blocking claim triggering, and idempotent Cloud Firestore persistence).
 
 ---
 
@@ -272,6 +272,35 @@ Cloud Firestore (Deny-By-Default Client Rules)
 
 ---
 
+## AI Delivery Extraction Architecture (Phase 7)
+
+Phase 7 introduces an automated extraction pipeline that transforms unstructured recipient delivery notes into strict, normalized delivery constraints:
+
+```text
+Recipient Notes
+      ↓
+LangChain ChatPromptTemplate (Anti-Injection & Zero Hallucination Rules)
+      ↓
+LLM Provider (OpenAI / Google GenAI / Mock)
+      ↓
+Structured Output
+      ↓
+Pydantic v2 Validation (backend/src/ai/schemas/delivery_constraints.py)
+      ↓
+Application Normalization & Deduplication
+      ↓
+Cloud Firestore (deliveryConstraints/{constraintId})
+```
+
+### Key Capabilities
+
+- **Strict Data Minimization**: Only `recipient.notes` is passed to the AI extractor. Recipient addresses, phone numbers, sender IDs, and claim tokens are never sent to external LLMs.
+- **Pydantic Validation**: Validates 24-hour time windows (`start <= end`), rejects unexpected fields (`extra="forbid"`), and enforces list length bounds.
+- **Asynchronous Fault Isolation**: Triggered non-blocking after claim completion. AI provider latency, rate limits, or outages never prevent or delay recipient claim completion.
+- **Idempotent Upsert**: Running extraction repeatedly safely updates the existing constraint document.
+
+---
+
 ## Environment Variables
 
 ### Backend (`backend/.env`)
@@ -287,6 +316,15 @@ CLAIM_TOKEN_EXPIRATION_MINUTES=30
 FIREBASE_PROJECT_ID=claimroute-5ff4e
 FIREBASE_CLIENT_EMAIL=your-service-account@project.iam.gserviceaccount.com
 FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
+
+# AI Delivery Extraction Configuration (Phase 7 - Server-Only)
+LLM_PROVIDER=mock
+LLM_MODEL=gpt-4o-mini
+LLM_API_KEY=your-llm-api-key-here
+LLM_TEMPERATURE=0
+LLM_TIMEOUT_MS=15000
+LLM_MAX_RETRIES=2
+PYTHON_PATH=./.venv/bin/python3
 ```
 
 ### Frontend (`frontend/.env`)
@@ -303,6 +341,7 @@ VITE_API_BASE_URL=http://localhost:5000/api
 
 - **Node.js** `>= 20.0.0`
 - **npm** `>= 10.0.0`
+- **Python** `>= 3.10` with `pydantic` (for Python schema validation)
 
 ### 2. Backend Setup & Automated Tests
 
@@ -335,8 +374,8 @@ Open `http://localhost:5173/deliveries` to create orders and generate claim link
 | **Phase 3**   | Order Management (Sender Workflows, CRUD, Validation)    | **Completed** |
 | **Phase 4**   | Secure Claim System (Tokens, Hashing, Expiration, Claim) | **Completed** |
 | **Phase 5**   | Recipient Claim Flow (Address Form & Preferences Intake) | **Completed** |
-| **Phase 6**   | Security Hardening & Rate Limiting (69 Tests Passing)    | **Completed** |
-| **Phase 7**   | LangChain & Pydantic AI Extraction for Delivery Notes    | Queued        |
+| **Phase 6**   | Security Hardening & Rate Limiting                       | **Completed** |
+| **Phase 7**   | LangChain & Pydantic AI Extraction (87 Tests Passing)    | **Completed** |
 | **Phase 8**   | Fulfillment Readiness & Operations Dispatch              | Queued        |
 
 ---

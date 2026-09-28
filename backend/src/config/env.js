@@ -32,6 +32,20 @@ export function validateEnv(customEnv = process.env) {
     }
   }
 
+  if (customEnv.LLM_TEMPERATURE) {
+    const temp = parseFloat(customEnv.LLM_TEMPERATURE);
+    if (isNaN(temp) || temp < 0 || temp > 2) {
+      throw new Error('Invalid environment variable LLM_TEMPERATURE: must be a number between 0 and 2.');
+    }
+  }
+
+  if (customEnv.LLM_TIMEOUT_MS) {
+    const timeout = parseInt(customEnv.LLM_TIMEOUT_MS, 10);
+    if (isNaN(timeout) || timeout <= 0) {
+      throw new Error('Invalid environment variable LLM_TIMEOUT_MS: must be a positive integer.');
+    }
+  }
+
   // Production-only enforcement
   if (isProd) {
     if (!customEnv.FIREBASE_PROJECT_ID) {
@@ -78,6 +92,17 @@ export const config = {
     privateKey: parsePrivateKey(process.env.FIREBASE_PRIVATE_KEY),
     emulatorHost: process.env.FIRESTORE_EMULATOR_HOST,
     databaseId: process.env.FIREBASE_DATABASE_ID || '(default)',
+  },
+
+  // AI Delivery Extraction Configuration (Phase 7)
+  ai: {
+    provider: process.env.LLM_PROVIDER || (process.env.NODE_ENV === 'test' ? 'mock' : 'mock'),
+    model: process.env.LLM_MODEL || 'gpt-4o-mini',
+    apiKey: process.env.LLM_API_KEY,
+    temperature: parseFloat(process.env.LLM_TEMPERATURE || '0'),
+    timeoutMs: parseInt(process.env.LLM_TIMEOUT_MS || '15000', 10),
+    maxRetries: parseInt(process.env.LLM_MAX_RETRIES || '2', 10),
+    pythonPath: process.env.PYTHON_PATH,
   },
 };
 

@@ -10,6 +10,8 @@ import {
   listOrders,
   updateOrder,
   cancelOrder,
+  getOrderConstraints,
+  triggerConstraintExtraction,
 } from "../controllers/orderController.js";
 import { generateClaim } from "../controllers/claimController.js";
 
@@ -28,5 +30,9 @@ router.post("/:orderId/cancel", cancelOrder);
 
 // Claim generation for an eligible order
 router.post("/:orderId/claim", generateClaim);
+
+// Extracted delivery constraints
+router.get("/:orderId/constraints", getOrderConstraints);
+router.post("/:orderId/constraints/extract", triggerConstraintExtraction);
 
 export default router;

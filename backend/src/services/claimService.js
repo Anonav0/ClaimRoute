@@ -14,6 +14,7 @@ import {
   AppError,
 } from "../errors/AppError.js";
 import { authorizationService } from "./authorizationService.js";
+import { deliveryConstraintService } from "./deliveryConstraintService.js";
 import config from "../config/env.js";
 import logger from "../utils/logger.js";
 
@@ -254,6 +255,17 @@ export class ClaimService {
       orderId: result.orderId,
       recipientId: result.recipientId,
     });
+
+    // Trigger AI delivery extraction asynchronously (non-blocking)
+    // Ensures AI latency or failure never delays or compromises the critical claim confirmation
+    deliveryConstraintService
+      .extractAndSaveConstraintsForOrder(result.orderId)
+      .catch((extractionErr) => {
+        logger.error("Asynchronous AI extraction failed", {
+          orderId: result.orderId,
+          error: extractionErr.message,
+        });
+      });
 
     return {
       orderId: result.orderId,

@@ -98,10 +98,66 @@ export const cancelOrder = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /api/orders/:orderId/constraints
+ * Retrieve extracted delivery constraints for an order
+ */
+export const getOrderConstraints = async (req, res, next) => {
+  try {
+    const { deliveryConstraintService } =
+      await import("../services/deliveryConstraintService.js");
+    const { mapDeliveryConstraintsResponse } =
+      await import("../utils/responseMappers.js");
+
+    const constraints = await deliveryConstraintService.getConstraintsByOrderId(
+      req.user,
+      req.params.orderId,
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: mapDeliveryConstraintsResponse(constraints),
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * POST /api/orders/:orderId/constraints/extract
+ * Manually trigger or re-run AI delivery constraint extraction
+ */
+export const triggerConstraintExtraction = async (req, res, next) => {
+  try {
+    const { deliveryConstraintService } =
+      await import("../services/deliveryConstraintService.js");
+    const { mapDeliveryConstraintsResponse } =
+      await import("../utils/responseMappers.js");
+
+    // Verify ownership first
+    await orderService.getOrderById(req.senderId, req.params.orderId);
+
+    const constraints =
+      await deliveryConstraintService.extractAndSaveConstraintsForOrder(
+        req.params.orderId,
+        { safeMode: false },
+      );
+
+    return res.status(200).json({
+      success: true,
+      data: mapDeliveryConstraintsResponse(constraints),
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 export default {
   createOrder,
   getOrder,
   listOrders,
   updateOrder,
   cancelOrder,
+  getOrderConstraints,
+  triggerConstraintExtraction,
 };

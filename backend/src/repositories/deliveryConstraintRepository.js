@@ -20,6 +20,35 @@ export class DeliveryConstraintRepository extends BaseRepository {
     if (snap.empty) return null;
     return formatDoc(snap.docs[0]);
   }
+
+  /**
+   * Idempotent upsert of delivery constraints for an order
+   * If a record already exists for the order, updates it; otherwise creates a new record.
+   *
+   * @param {string} orderId
+   * @param {Object} constraintData
+   * @returns {Promise<Object>} Persisted delivery constraint entity
+   */
+  async upsertByOrderId(orderId, constraintData) {
+    if (!orderId) {
+      throw new Error(
+        "orderId is required for upserting delivery constraints.",
+      );
+    }
+
+    const existing = await this.findByOrderId(orderId);
+    if (existing) {
+      return this.update(existing.id, {
+        ...constraintData,
+        orderId,
+      });
+    }
+
+    return this.create({
+      ...constraintData,
+      orderId,
+    });
+  }
 }
 
 export const deliveryConstraintRepository = new DeliveryConstraintRepository();
