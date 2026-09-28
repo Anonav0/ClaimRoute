@@ -11,6 +11,7 @@ import {
   updateOrder,
   cancelOrder,
 } from "../controllers/orderController.js";
+import { generateClaim } from "../controllers/claimController.js";
 
 const router = Router();
 
@@ -23,5 +24,8 @@ router.get("/", listOrders);
 router.get("/:orderId", getOrder);
 router.patch("/:orderId", validateUpdateOrder, updateOrder);
 router.post("/:orderId/cancel", cancelOrder);
+
+// Claim generation for an eligible order
+router.post("/:orderId/claim", generateClaim);
 
 export default router;

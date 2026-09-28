@@ -1,0 +1,308 @@
+/* ==========================================================================
+   ClaimRoute — Recipient Claim Page Styles
+   Warm, secure, reassuring aesthetic
+   ========================================================================== */
+
+.claim-page-container {
+  min-height: calc(100vh - 160px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl) var(--space-md);
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(249, 115, 22, 0.04),
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at bottom left,
+      rgba(79, 70, 229, 0.05),
+      transparent 40%
+    ),
+    var(--color-bg);
+}
+
+.claim-card-wrapper {
+  width: 100%;
+  max-width: 580px;
+}
+
+.claim-card {
+  padding: var(--space-xl);
+  border-radius: var(--radius-xl, 16px);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  box-shadow:
+    0 10px 30px -5px rgba(28, 25, 23, 0.06),
+    0 4px 6px -2px rgba(28, 25, 23, 0.02);
+}
+
+/* Loading State */
+.claim-loading-content {
+  text-align: center;
+  padding: var(--space-2xl, 48px) var(--space-md);
+}
+
+.claim-spinner {
+  margin-bottom: var(--space-lg);
+  display: inline-flex;
+}
+
+.spin-icon {
+  animation: spin 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.claim-loading-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-xs);
+}
+
+.claim-loading-subtitle {
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+/* Valid State */
+.claim-header {
+  margin-bottom: var(--space-lg);
+}
+
+.claim-badge-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-sm);
+}
+
+.claim-headline {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.25;
+  margin-bottom: var(--space-xs);
+}
+
+.claim-subheadline {
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+/* Delivery Item Card */
+.claim-item-card {
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg, 12px);
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.claim-item-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+}
+
+.item-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.item-name {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.item-qty {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.item-desc {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  margin: var(--space-xs) 0 var(--space-md) 0;
+  line-height: 1.4;
+}
+
+.claim-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+  padding-top: var(--space-xs);
+  border-top: 1px dashed var(--color-border);
+}
+
+.meta-box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.meta-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.meta-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+}
+
+/* Scope Boundary Notice */
+.claim-boundary-notice {
+  display: flex;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(79, 70, 229, 0.05);
+  border: 1px solid rgba(79, 70, 229, 0.15);
+  border-radius: 10px;
+  font-size: 0.825rem;
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+  margin-bottom: var(--space-lg);
+}
+
+.notice-icon {
+  color: var(--color-primary);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Action Footer */
+.claim-action-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.claim-confirm-btn {
+  width: 100%;
+}
+
+/* Result Icons */
+.claim-result-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-md);
+}
+
+.claim-result-icon.success {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.claim-result-icon.expired,
+.claim-result-icon.used {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.claim-result-icon.invalid,
+.claim-result-icon.ineligible,
+.claim-result-icon.network {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+/* Consumed State */
+.consumed-receipt {
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: var(--space-sm) var(--space-md);
+  margin: var(--space-md) 0 var(--space-lg) 0;
+}
+
+.receipt-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+  padding: var(--space-xs) 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.receipt-row:last-child {
+  border-bottom: none;
+}
+
+.claim-test-reuse-box {
+  background: rgba(249, 115, 22, 0.05);
+  border: 1px dashed rgba(249, 115, 22, 0.3);
+  border-radius: 10px;
+  padding: var(--space-md);
+}
+
+.reuse-hint {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-sm);
+  line-height: 1.45;
+}
+
+.reuse-actions {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+/* Error Guidance */
+.error-guidance {
+  background: var(--color-bg-subtle);
+  border-left: 3px solid var(--color-warning);
+  padding: var(--space-sm) var(--space-md);
+  margin: var(--space-md) 0 var(--space-lg) 0;
+  border-radius: 0 8px 8px 0;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+}
+
+.error-guidance strong {
+  color: var(--color-text-primary);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.error-guidance p {
+  margin: 0;
+}
+
+.claim-error-actions {
+  display: flex;
+  gap: var(--space-sm);
+  justify-content: flex-end;
+}

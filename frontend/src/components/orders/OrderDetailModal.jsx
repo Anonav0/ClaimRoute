@@ -10,8 +10,14 @@ import {
   XCircle,
   AlertTriangle,
   ShieldCheck,
+  Link as LinkIcon,
+  Copy,
+  Check,
+  ExternalLink,
+  KeyRound,
+  RefreshCw,
 } from "lucide-react";
-import { mapOrderError } from "../../services/order.service.js";
+import { mapOrderError, orderService } from "../../services/order.service.js";
 
 export function OrderDetailModal({
   isOpen,
@@ -24,14 +30,33 @@ export function OrderDetailModal({
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const [cancelError, setCancelError] = useState(null);
 
+  // Claim generation state
+  const [generatedClaim, setGeneratedClaim] = useState(null);
+  const [isGeneratingClaim, setIsGeneratingClaim] = useState(false);
+  const [claimError, setClaimError] = useState(null);
+  const [copied, setCopied] = useState(false);
+  const [localStatus, setLocalStatus] = useState(order?.status);
+
+  // Sync local status when order changes
+  React.useEffect(() => {
+    setLocalStatus(order?.status);
+    setGeneratedClaim(null);
+    setClaimError(null);
+    setCopied(false);
+    setConfirmCancelOpen(false);
+  }, [order?.id, order?.status]);
+
   if (!order) return null;
 
   const itemName =
     typeof order.item === "object" ? order.item.name : order.item;
   const itemDesc = typeof order.item === "object" ? order.item.description : "";
-  const isEditable = order.status === "CREATED";
+  const currentStatus = localStatus || order.status;
+  const isEditable = currentStatus === "CREATED";
   const isCancellable =
-    order.status === "CREATED" || order.status === "CLAIM_PENDING";
+    currentStatus === "CREATED" || currentStatus === "CLAIM_PENDING";
+  const isClaimEligible =
+    currentStatus === "CREATED" || currentStatus === "CLAIM_PENDING";
 
   const handleCancelClick = async () => {
     setCancelError(null);
@@ -41,6 +66,40 @@ export function OrderDetailModal({
       onClose();
     } catch (err) {
       setCancelError(mapOrderError(err));
+    }
+  };
+
+  const handleGenerateClaimClick = async () => {
+    setIsGeneratingClaim(true);
+    setClaimError(null);
+    try {
+      const data = await orderService.generateClaimLink(order.id);
+      setGeneratedClaim(data);
+      if (currentStatus === "CREATED") {
+        setLocalStatus("CLAIM_PENDING");
+      }
+    } catch (err) {
+      setClaimError(mapOrderError(err));
+    } finally {
+      setIsGeneratingClaim(false);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    if (!generatedClaim?.claimUrl) return;
+    try {
+      await navigator.clipboard.writeText(generatedClaim.claimUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // Fallback if clipboard API is blocked
+      const input = document.getElementById("claim-url-input");
+      if (input) {
+        input.select();
+        document.execCommand("copy");
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      }
     }
   };
 
@@ -59,7 +118,7 @@ export function OrderDetailModal({
                 <span className="detail-id-tag">ID: {order.id}</span>
               </div>
             </div>
-            <OrderStatusBadge status={order.status} size="md" />
+            <OrderStatusBadge status={currentStatus} size="md" />
           </div>
 
           {itemDesc && <p className="detail-description-text">{itemDesc}</p>}
@@ -108,15 +167,109 @@ export function OrderDetailModal({
           </div>
         )}
 
-        {/* Address Privacy Notice */}
-        <div className="detail-privacy-banner">
-          <ShieldCheck size={16} className="privacy-icon" />
-          <p>
-            <strong>Address Decoupled:</strong> Recipient delivery address has
-            not been solicited yet. In Phase 4, the recipient will securely
-            input their private delivery location via a single-use claim link.
-          </p>
-        </div>
+        {/* Phase 4 Secure Claim Link Section */}
+        {isClaimEligible && (
+          <div className="detail-claim-section">
+            {!generatedClaim ? (
+              <div className="claim-prompt-box">
+                <div className="claim-prompt-text">
+                  <div className="claim-prompt-title">
+                    <KeyRound size={17} className="text-primary inline mr-1" />
+                    <strong>Recipient Claim Link</strong>
+                  </div>
+                  <p className="claim-prompt-desc">
+                    Generate a secure, single-use claim link to share with your
+                    recipient. The raw token is never stored in the database.
+                  </p>
+                </div>
+                {claimError && <p className="confirm-error">{claimError}</p>}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={LinkIcon}
+                  onClick={handleGenerateClaimClick}
+                  isLoading={isGeneratingClaim}
+                >
+                  Generate Claim Link
+                </Button>
+              </div>
+            ) : (
+              <div className="claim-generated-card">
+                <div className="claim-generated-header">
+                  <div className="claim-generated-badge">
+                    <ShieldCheck size={15} className="inline mr-1" /> Single-Use
+                    Claim Link Created
+                  </div>
+                  <span className="claim-expires-notice">
+                    <Clock size={12} className="inline mr-1 text-accent" />
+                    Expires at{" "}
+                    {new Date(generatedClaim.expiresAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+
+                <div className="claim-url-bar">
+                  <input
+                    id="claim-url-input"
+                    type="text"
+                    readOnly
+                    value={generatedClaim.claimUrl}
+                    className="claim-url-text"
+                  />
+                  <Button
+                    variant={copied ? "primary" : "secondary"}
+                    size="sm"
+                    icon={copied ? Check : Copy}
+                    onClick={handleCopyLink}
+                  >
+                    {copied ? "Copied!" : "Copy"}
+                  </Button>
+                  <a
+                    href={generatedClaim.claimUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="claim-open-btn"
+                  >
+                    <Button variant="ghost" size="sm" icon={ExternalLink}>
+                      Open
+                    </Button>
+                  </a>
+                </div>
+
+                <div className="claim-security-footer">
+                  <p className="claim-security-text">
+                    🔒 <strong>Sensitive link:</strong> Share this link directly
+                    with the recipient. Anyone with this link can view delivery
+                    metadata and claim this package once.
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    icon={RefreshCw}
+                    onClick={handleGenerateClaimClick}
+                    isLoading={isGeneratingClaim}
+                    className="regenerate-link-btn"
+                  >
+                    Regenerate
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Address Privacy Notice for other statuses */}
+        {!isClaimEligible && (
+          <div className="detail-privacy-banner">
+            <ShieldCheck size={16} className="privacy-icon" />
+            <p>
+              <strong>Status {currentStatus}:</strong> Claim links can only be
+              generated for orders in CREATED or CLAIM_PENDING status.
+            </p>
+          </div>
+        )}
 
         {/* Actions */}
         {!confirmCancelOpen ? (

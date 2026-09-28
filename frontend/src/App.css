@@ -2043,3 +2043,113 @@
 .btn-confirm-danger:hover {
   background: #b91c1c;
 }
+
+/* Phase 4 Claim Link Integration in Order Detail Modal */
+.detail-claim-section {
+  margin-top: var(--space-xs);
+}
+
+.claim-prompt-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: rgba(79, 70, 229, 0.05);
+  border: 1px solid rgba(79, 70, 229, 0.18);
+  border-radius: var(--radius-md);
+}
+
+.claim-prompt-title {
+  display: flex;
+  align-items: center;
+  font-size: 0.95rem;
+  color: var(--color-text-primary);
+  margin-bottom: 3px;
+}
+
+.claim-prompt-desc {
+  font-size: 0.825rem;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.claim-generated-card {
+  padding: var(--space-md);
+  background: rgba(22, 163, 74, 0.04);
+  border: 1px solid rgba(22, 163, 74, 0.25);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.claim-generated-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85rem;
+}
+
+.claim-generated-badge {
+  font-weight: 700;
+  color: var(--color-success);
+  display: flex;
+  align-items: center;
+}
+
+.claim-expires-notice {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+}
+
+.claim-url-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.claim-url-text {
+  flex: 1;
+  padding: 0.45rem 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--color-text-primary);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+
+.claim-url-text:focus {
+  border-color: var(--color-primary);
+}
+
+.claim-open-btn {
+  text-decoration: none;
+}
+
+.claim-security-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding-top: var(--space-xs);
+  border-top: 1px dashed var(--color-border-subtle);
+}
+
+.claim-security-text {
+  font-size: 0.775rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: 1.35;
+}
+
+.regenerate-link-btn {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}

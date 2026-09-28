@@ -89,6 +89,18 @@ export const orderService = {
     });
     return res.data;
   },
+
+  /**
+   * Generate a secure, one-time claim link for an eligible order
+   * @param {string} orderId
+   * @returns {Promise<{ orderId: string, claimUrl: string, expiresAt: string }>}
+   */
+  async generateClaimLink(orderId) {
+    const res = await apiClient(`/orders/${orderId}/claim`, {
+      method: "POST",
+    });
+    return res.data;
+  },
 };
 
 export default orderService;
