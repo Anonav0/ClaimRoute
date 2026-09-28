@@ -1,60 +1,111 @@
-import React from "react";
-import { useHealthCheck } from "../hooks/useHealthCheck.js";
-import StatusCard from "../components/StatusCard.jsx";
-import PhaseRoadmap from "../components/PhaseRoadmap.jsx";
-import { ShieldCheck, Sparkles } from "lucide-react";
+import React, { useState } from "react";
+import Hero from "../components/sections/Hero.jsx";
+import HowItWorks from "../components/sections/HowItWorks.jsx";
+import TrustSection from "../components/sections/TrustSection.jsx";
+import PhaseRoadmapSection from "../components/sections/PhaseRoadmapSection.jsx";
+import Modal from "../components/ui/Modal.jsx";
+import Button from "../components/ui/Button.jsx";
+import { PackagePlus, KeyRound, Sparkles, ArrowRight } from "lucide-react";
 
-export function HomePage() {
-  const { status, data, error, lastChecked, refresh } = useHealthCheck(
-    true,
-    15000,
-  );
+export function HomePage({ healthState }) {
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [claimModalOpen, setClaimModalOpen] = useState(false);
+  const [claimTokenInput, setClaimTokenInput] = useState("");
 
   return (
-    <div className="home-container">
-      {/* Hero Header */}
-      <section className="hero-section">
-        <div className="badge-announcement">
-          <Sparkles size={14} className="sparkle-icon" />
-          <span>Foundation Setup & Verification Active</span>
-        </div>
+    <div className="homepage-wrapper">
+      {/* Hero Welcome Section */}
+      <Hero
+        onCreateClick={() => setCreateModalOpen(true)}
+        onClaimClick={() => setClaimModalOpen(true)}
+      />
 
-        <h1 className="hero-title">ClaimRoute</h1>
-        <h2 className="hero-subtitle">Address-Free Claim & Routing</h2>
-        <p className="hero-description">
-          Securely connect recipients with fulfillment workflows without
-          pre-sharing private addresses.
-        </p>
-      </section>
+      {/* 3-Step Human Process */}
+      <HowItWorks />
 
-      {/* Main Content Grid */}
-      <div className="content-grid">
-        <section className="status-section">
-          <StatusCard
-            backendStatus={status}
-            backendData={data}
-            backendError={error}
-            lastChecked={lastChecked}
-            onRefresh={refresh}
-          />
+      {/* Trust & Privacy Assurance */}
+      <TrustSection />
 
-          <div className="architecture-callout">
-            <div className="callout-header">
-              <ShieldCheck size={18} className="callout-icon" />
-              <h4>Architecture Decoupling</h4>
-            </div>
-            <p>
-              Address collection will be deferred until the recipient interacts
-              with a one-time cryptographic token link. Senders never handle
-              recipient raw addresses directly.
-            </p>
+      {/* Incremental Roadmap (Expandable) */}
+      <PhaseRoadmapSection />
+
+      {/* Friendly "Create Delivery" Placeholder Modal */}
+      <Modal
+        isOpen={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        title="Create an Address-Free Delivery"
+      >
+        <div className="modal-feature-teaser">
+          <div className="teaser-icon-wrapper">
+            <PackagePlus size={28} className="teaser-icon" />
           </div>
-        </section>
+          <h4 className="teaser-headline">Order Creation Workflow</h4>
+          <p className="teaser-body">
+            In subsequent phases, senders will be able to enter an item or gift
+            name, set an optional delivery timeframe, and generate a secure,
+            one-time claim link.
+          </p>
+          <div className="teaser-box">
+            <Sparkles size={16} className="teaser-sparkle" />
+            <span>
+              <strong>Phase 2 Preview:</strong> Persistent order creation and
+              Firestore schema integration are scheduled for the next
+              development phase.
+            </span>
+          </div>
+          <div className="modal-btn-row">
+            <Button variant="primary" onClick={() => setCreateModalOpen(false)}>
+              Got it, thanks!
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
-        <section className="roadmap-section">
-          <PhaseRoadmap />
-        </section>
-      </div>
+      {/* Friendly "I Have a Claim Link" Placeholder Modal */}
+      <Modal
+        isOpen={claimModalOpen}
+        onClose={() => setClaimModalOpen(false)}
+        title="Claim Your Delivery"
+      >
+        <div className="modal-feature-teaser">
+          <div className="teaser-icon-wrapper claim">
+            <KeyRound size={28} className="teaser-icon" />
+          </div>
+          <h4 className="teaser-headline">Have a Claim Token?</h4>
+          <p className="teaser-body">
+            Recipients normally click their unique link directly from a message
+            or email (e.g.,{" "}
+            <code>claimroute.app/claim/&lt;secure-token&gt;</code>).
+          </p>
+          <div className="claim-input-group">
+            <input
+              type="text"
+              placeholder="Paste token or link here..."
+              value={claimTokenInput}
+              onChange={(e) => setClaimTokenInput(e.target.value)}
+              className="claim-modal-input"
+            />
+            <Button
+              variant="primary"
+              size="sm"
+              icon={ArrowRight}
+              iconPosition="right"
+              onClick={() => {
+                alert(
+                  "Secure one-time token verification engine will be enabled in Phase 3.",
+                );
+                setClaimModalOpen(false);
+              }}
+            >
+              Verify Link
+            </Button>
+          </div>
+          <p className="teaser-subnote">
+            In Phase 3, cryptographic hash verification and the recipient
+            address collection form will be activated.
+          </p>
+        </div>
+      </Modal>
     </div>
   );
 }
