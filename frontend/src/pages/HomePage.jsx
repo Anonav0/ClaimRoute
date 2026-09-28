@@ -1,16 +1,32 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Hero from "../components/sections/Hero.jsx";
 import HowItWorks from "../components/sections/HowItWorks.jsx";
 import TrustSection from "../components/sections/TrustSection.jsx";
 import PhaseRoadmapSection from "../components/sections/PhaseRoadmapSection.jsx";
 import Modal from "../components/ui/Modal.jsx";
 import Button from "../components/ui/Button.jsx";
-import { PackagePlus, KeyRound, Sparkles, ArrowRight } from "lucide-react";
+import OrderFormModal from "../components/orders/OrderFormModal.jsx";
+import { orderService } from "../services/order.service.js";
+import { KeyRound, ArrowRight } from "lucide-react";
 
 export function HomePage({ healthState }) {
+  const navigate = useNavigate();
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [claimModalOpen, setClaimModalOpen] = useState(false);
   const [claimTokenInput, setClaimTokenInput] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleCreateOrder = async (orderPayload) => {
+    setIsSubmitting(true);
+    try {
+      await orderService.createOrder(orderPayload);
+      setCreateModalOpen(false);
+      navigate("/deliveries");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="homepage-wrapper">
@@ -29,39 +45,15 @@ export function HomePage({ healthState }) {
       {/* Incremental Roadmap (Expandable) */}
       <PhaseRoadmapSection />
 
-      {/* Friendly "Create Delivery" Placeholder Modal */}
-      <Modal
+      {/* Real Live Order Creation Modal */}
+      <OrderFormModal
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
-        title="Create an Address-Free Delivery"
-      >
-        <div className="modal-feature-teaser">
-          <div className="teaser-icon-wrapper">
-            <PackagePlus size={28} className="teaser-icon" />
-          </div>
-          <h4 className="teaser-headline">Order Creation Workflow</h4>
-          <p className="teaser-body">
-            In subsequent phases, senders will be able to enter an item or gift
-            name, set an optional delivery timeframe, and generate a secure,
-            one-time claim link.
-          </p>
-          <div className="teaser-box">
-            <Sparkles size={16} className="teaser-sparkle" />
-            <span>
-              <strong>Phase 2 Preview:</strong> Persistent order creation and
-              Firestore schema integration are scheduled for the next
-              development phase.
-            </span>
-          </div>
-          <div className="modal-btn-row">
-            <Button variant="primary" onClick={() => setCreateModalOpen(false)}>
-              Got it, thanks!
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        onSubmit={handleCreateOrder}
+        isSubmitting={isSubmitting}
+      />
 
-      {/* Friendly "I Have a Claim Link" Placeholder Modal */}
+      {/* Friendly "I Have a Claim Link" Modal */}
       <Modal
         isOpen={claimModalOpen}
         onClose={() => setClaimModalOpen(false)}
@@ -92,7 +84,7 @@ export function HomePage({ healthState }) {
               iconPosition="right"
               onClick={() => {
                 alert(
-                  "Secure one-time token verification engine will be enabled in Phase 3.",
+                  "Secure one-time claim token resolution engine is scheduled for Phase 4.",
                 );
                 setClaimModalOpen(false);
               }}
@@ -101,7 +93,7 @@ export function HomePage({ healthState }) {
             </Button>
           </div>
           <p className="teaser-subnote">
-            In Phase 3, cryptographic hash verification and the recipient
+            In Phase 4, cryptographic hash verification and the recipient
             address collection form will be activated.
           </p>
         </div>

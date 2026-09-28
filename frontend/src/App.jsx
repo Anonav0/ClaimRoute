@@ -8,6 +8,7 @@ import {
 import Navbar from "./components/layout/Navbar.jsx";
 import Footer from "./components/layout/Footer.jsx";
 import HomePage from "./pages/HomePage.jsx";
+import OrdersPage from "./pages/OrdersPage.jsx";
 import { useHealthCheck } from "./hooks/useHealthCheck.js";
 import Modal from "./components/ui/Modal.jsx";
 import Button from "./components/ui/Button.jsx";
@@ -30,6 +31,7 @@ export function App() {
         <main className="main-viewport">
           <Routes>
             <Route path="/" element={<HomePage healthState={healthState} />} />
+            <Route path="/deliveries" element={<OrdersPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
@@ -66,7 +68,7 @@ export function App() {
                 iconPosition="right"
                 onClick={() => {
                   alert(
-                    "Token verification and recipient address form are scheduled for Phase 3.",
+                    "Token verification and recipient address form are scheduled for Phase 4.",
                   );
                   setGlobalClaimModal(false);
                 }}

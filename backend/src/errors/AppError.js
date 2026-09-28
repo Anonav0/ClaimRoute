@@ -11,14 +11,32 @@ export class AppError extends Error {
 }
 
 export class NotFoundError extends AppError {
-  constructor(message = "Resource not found") {
-    super(message, 404, "NOT_FOUND");
+  constructor(message = "Resource not found", code = "NOT_FOUND") {
+    super(message, 404, code);
   }
 }
 
 export class BadRequestError extends AppError {
-  constructor(message = "Bad request") {
-    super(message, 400, "BAD_REQUEST");
+  constructor(message = "Bad request", code = "BAD_REQUEST") {
+    super(message, 400, code);
+  }
+}
+
+export class ValidationError extends AppError {
+  constructor(message = "Validation failed") {
+    super(message, 400, "VALIDATION_ERROR");
+  }
+}
+
+export class ConflictError extends AppError {
+  constructor(message = "Resource state conflict", code = "CONFLICT") {
+    super(message, 409, code);
+  }
+}
+
+export class ForbiddenError extends AppError {
+  constructor(message = "Access forbidden", code = "FORBIDDEN") {
+    super(message, 403, code);
   }
 }
 

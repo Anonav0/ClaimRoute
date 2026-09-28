@@ -2,164 +2,177 @@
 
 ClaimRoute is a fulfillment and delivery-routing platform where a sender can initiate a fulfillment or gift order without having to solicit or store the recipient's sensitive delivery address upfront. Instead, the recipient receives a one-time cryptographic claim link to supply their delivery preferences and address securely.
 
-> **Current Status**: **Phase 2 (Firebase & Firestore Database Foundation)**. This repository contains the complete full-stack foundation, the warm consumer-first design system, and the server-mediated Firebase Admin SDK & Cloud Firestore persistence layer. Business workflows and AI extraction will be implemented in subsequent phases.
+> **Current Status**: **Phase 3 (Order Management)**. This repository contains the complete full-stack foundation, the warm consumer-first design system, Cloud Firestore persistence, and the complete sender-side order management workflow. Business workflows for claim tokens, recipient address collection, and AI routing extraction are ready to be integrated in subsequent phases.
 
 ---
 
-## Current Features (Phase 1, 1.5 & 2)
+## Current Features (Phases 1, 1.5, 2 & 3)
 
-- **Frontend Client**: Modern React + Vite application with design tokens, warm consumer landing page, accessible components (`Button`, `Card`, `Badge`, `Modal`), and integrated backend/database status indicator.
-- **Backend Server**: Modular Node.js + Express REST service with Route-Controller-Service-Repository layered architecture.
+- **Frontend Client**: Modern React + Vite application with design tokens, responsive layout, accessible UI primitives, and the new **Your Deliveries** sender workflow (`/deliveries`).
+- **Sender Order Management**: Create, view, update, and cancel deliveries through an intuitive, human-centered UI and REST APIs.
+- **Backend Architecture**: Route-Controller-Service-Repository layered architecture with validation middleware and server-controlled sender context.
 - **Persistence Layer**: Cloud Firestore integration via `firebase-admin` with automatic server timestamps (`FieldValue.serverTimestamp()`) and snapshot serializers.
-- **Repository Pattern**: Centralized `BaseRepository` with typed domain repositories (`UserRepository`, `OrderRepository`, `ClaimTokenRepository`, `RecipientRepository`, `DeliveryConstraintRepository`, `RoutingRequestRepository`).
-- **Security & Firestore Rules**: Server-first architecture; `firestore.rules` enforces default-deny for direct browser access, keeping PII secure.
+- **Repository Pattern**: Centralized `BaseRepository` with typed domain repositories (`OrderRepository`, `UserRepository`, etc.).
+- **Security & Validation**: Request validation layer rejects protected field tampering (`status`, `senderId`, `id`). `firestore.rules` enforces default-deny for direct browser access.
 - **Health Check API**: `GET /api/health` reports status of both API gateway and Cloud Firestore connection.
-- **Test Suite**: Native `node:test` suite verifying repository initialization, timestamp serializers, and health probes.
+- **Automated Test Suite**: Native `node:test` suite verifying validation rules, state transitions, sender isolation, and health probes.
 
 ---
 
-## Tech Stack
+## Order Management Workflow
 
-- **Frontend**:
-  - React (v18)
-  - Vite (v6)
-  - React Router DOM (v6)
-  - Lucide React (Icons)
-  - Modern CSS (Tokens, responsive design)
-- **Backend**:
-  - Node.js (v20+)
-  - Express.js (v4)
-  - Firebase Admin SDK (`firebase-admin` v13)
-  - Cloud Firestore
-  - Helmet (HTTP security headers)
-  - CORS (Cross-Origin Resource Sharing)
-  - Dotenv (Environment variable management)
-  - Native Node Test Runner (`node:test`)
+1. **Create Order**: Senders create a delivery order by specifying an item name, optional description, quantity, delivery timeframe, and internal notes. Senders do not supply a recipient address.
+2. **List Orders**: Senders can review all their outgoing deliveries with live statuses (e.g. _Created_, _Ready to Claim_, _Cancelled_).
+3. **View Details**: Clicking any order reveals its specifications, creation dates, and address-privacy guarantees.
+4. **Edit Information**: Orders in `CREATED` status can be edited (item, quantity, timeframe, notes).
+5. **Cancel Delivery**: Active orders in `CREATED` status can be cancelled with one click. Cancelled orders are preserved in history rather than physically deleted.
 
 ---
 
-## Database Architecture
+## Order Data Model
 
-ClaimRoute utilizes a collection structure where all client access is mediated through the backend:
+Stored in Firestore under `orders/{orderId}`:
 
-```text
-users/                        # Senders, Operations, and Admin accounts
-├── id                        # Unique User ID
-├── email                     # User email address
-├── displayName               # User full name
-├── role                      # SENDER | OPERATIONS | ADMIN
-├── createdAt                 # Server timestamp
-└── updatedAt                 # Server timestamp
-
-orders/                       # Fulfillment & gift order records
-├── id                        # Unique Order ID
-├── senderId                  # Reference to users/{userId}
-├── item                      # Item / gift description
-├── quantity                  # Item count
-├── status                    # CREATED | CLAIM_PENDING | CLAIMED | PROCESSING |
-│                             # ROUTING_READY | FULFILLMENT_READY | COMPLETED | CANCELLED | EXPIRED
-├── createdAt                 # Order creation timestamp
-├── updatedAt                 # Last update timestamp
-└── claimedAt                 # Recipient claim timestamp (when claimed)
-
-claimTokens/                  # Cryptographic one-time claim tokens
-├── tokenHash                 # Primary Key: SHA-256 hash of the secret URL token
-├── orderId                   # Reference to orders/{orderId}
-├── expiresAt                 # Expiration timestamp
-├── used                      # Boolean flag indicating consumption
-├── usedAt                    # Timestamp when token was consumed
-└── createdAt                 # Creation timestamp
-
-recipients/                   # Recipient delivery details (Protected PII)
-├── id                        # Recipient record ID
-├── orderId                   # Reference to orders/{orderId}
-├── name                      # Recipient full name
-├── address                   # Structured object (line1, line2, city, state, postalCode, country)
-├── phone                     # Recipient contact number
-├── deliveryNotes             # Freeform notes (e.g. "Leave at back door")
-├── createdAt                 # Creation timestamp
-└── updatedAt                 # Last update timestamp
-
-deliveryConstraints/          # Normalized constraints (extracted via LLM in Phase 4)
-├── id                        # Constraint record ID
-├── orderId                   # Reference to orders/{orderId}
-├── deliveryStartTime         # Time window start
-├── deliveryEndTime           # Time window end
-├── accessCode                # Gate or callbox code
-├── accessInstructions        # Gate/callbox instructions
-├── dietaryConstraints        # Dietary preferences / perishable flags
-├── deliveryInstructions      # Structured drop-off notes
-├── createdAt                 # Extraction timestamp
-└── updatedAt                 # Last update timestamp
-
-routingRequests/              # Dispatch requests for courier routing (Phase 5)
-├── id                        # Request ID
-├── orderId                   # Reference to orders/{orderId}
-├── status                    # Routing preparation state
-├── createdAt                 # Creation timestamp
-└── updatedAt                 # Last update timestamp
+```json
+{
+  "id": "ceY2osOJRdzJcyAyoZZb",
+  "senderId": "development-sender",
+  "item": {
+    "name": "Single Origin Coffee Beans",
+    "description": "Artisanal roast gift set"
+  },
+  "quantity": 2,
+  "deliveryTimeframe": "By end of week",
+  "notes": "Leave with concierge if absent",
+  "status": "CREATED",
+  "claimedAt": null,
+  "createdAt": "2026-09-28T16:59:50.844Z",
+  "updatedAt": "2026-09-28T17:00:22.879Z"
+}
 ```
 
 ---
 
-## Firebase & Firestore Setup
+## Order Lifecycle
 
-### 1. Create a Firebase Project
-
-1. Open the [Firebase Console](https://console.firebase.google.com/) and create a new project (e.g., `claimroute`).
-2. Navigate to **Build > Firestore Database** and click **Create Database**.
-3. Choose your preferred region and start in **Production mode** (our `firestore.rules` enforces secure access).
-
-### 2. Generate Service Account Credentials
-
-1. In Firebase Console, go to **Project Settings > Service Accounts**.
-2. Click **Generate New Private Key** and download the JSON file.
-3. Extract `project_id`, `client_email`, and `private_key` into `backend/.env`.
-
-### 3. Local Development & Emulator Support
-
-For offline local development without active GCP credentials:
-
-- Set `FIRESTORE_EMULATOR_HOST=127.0.0.1:8080` in `backend/.env`.
-- Run the local emulator via Firebase tools using `firebase.json` and `firestore.rules`.
+| Status              | Phase              | Description                                                               |
+| :------------------ | :----------------- | :------------------------------------------------------------------------ |
+| `CREATED`           | Phase 3 (Active)   | Order successfully created by sender; fully editable and cancellable.     |
+| `CLAIM_PENDING`     | Phase 4 (Upcoming) | One-time claim token generated; awaiting recipient interaction.           |
+| `CLAIMED`           | Phase 4 (Upcoming) | Recipient has unlocked the claim link and submitted delivery preferences. |
+| `PROCESSING`        | Phase 5 (Upcoming) | Order is undergoing delivery constraint extraction and validation.        |
+| `ROUTING_READY`     | Phase 5 (Upcoming) | Delivery constraints extracted; ready for courier routing.                |
+| `FULFILLMENT_READY` | Phase 5 (Upcoming) | Route finalized and queued for delivery.                                  |
+| `COMPLETED`         | Phase 5 (Upcoming) | Package delivered to recipient.                                           |
+| `CANCELLED`         | Phase 3 (Active)   | Order cancelled by sender; preserved in history.                          |
+| `EXPIRED`           | Phase 4 (Upcoming) | Claim link passed its expiration date without consumption.                |
 
 ---
 
-## Environment Variables
+## API Documentation
 
-### Backend (`backend/.env`)
+### Order Management Endpoints
 
-```env
-# Server Runtime
-NODE_ENV=development
-PORT=5000
-CORS_ORIGIN=http://localhost:5173
+All order requests automatically scope to the server-controlled sender context (or testable via `X-Sender-Id` header).
 
-# Firebase Admin SDK Configuration
-FIREBASE_PROJECT_ID=your-firebase-project-id
-FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxx@your-project-id.iam.gserviceaccount.com
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC...\n-----END PRIVATE KEY-----\n"
+#### 1. Create Order
 
-# Optional: Local Firestore Emulator
-# FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
-```
+- **Method**: `POST /api/orders`
+- **Request Body**:
+  ```json
+  {
+    "item": {
+      "name": "Artisanal Coffee Box",
+      "description": "Roast beans with ceramic dripper"
+    },
+    "quantity": 1,
+    "deliveryTimeframe": "By Friday",
+    "notes": "Fragile glassware"
+  }
+  ```
+- **Response** (`201 Created`):
+  ```json
+  {
+    "success": true,
+    "data": {
+      "id": "ceY2osOJRdzJcyAyoZZb",
+      "senderId": "development-sender",
+      "item": {
+        "name": "Artisanal Coffee Box",
+        "description": "Roast beans with ceramic dripper"
+      },
+      "quantity": 1,
+      "deliveryTimeframe": "By Friday",
+      "notes": "Fragile glassware",
+      "status": "CREATED",
+      "claimedAt": null,
+      "createdAt": "2026-09-28T16:59:50.844Z",
+      "updatedAt": "2026-09-28T16:59:50.844Z"
+    }
+  }
+  ```
 
-### Frontend (`frontend/.env`)
+#### 2. List Orders
 
-```env
-VITE_API_BASE_URL=http://localhost:5000/api
-```
+- **Method**: `GET /api/orders`
+- **Response** (`200 OK`):
+  ```json
+  {
+    "success": true,
+    "data": [ ... ],
+    "count": 1
+  }
+  ```
+
+#### 3. Get Order by ID
+
+- **Method**: `GET /api/orders/:orderId`
+- **Response** (`200 OK`):
+  ```json
+  {
+    "success": true,
+    "data": { ... }
+  }
+  ```
+
+#### 4. Update Order
+
+- **Method**: `PATCH /api/orders/:orderId`
+- **Request Body**: Editable fields only (`item`, `quantity`, `deliveryTimeframe`, `notes`).
+- **Response** (`200 OK`): Returns updated order.
+- **Conflict** (`409 Conflict`): Returned if order is not in `CREATED` status.
+
+#### 5. Cancel Order
+
+- **Method**: `POST /api/orders/:orderId/cancel`
+- **Response** (`200 OK`): Returns order with `status: "CANCELLED"`.
+
+#### 6. Health Check
+
+- **Method**: `GET /api/health`
+- **Response** (`200 OK`):
+  ```json
+  {
+    "success": true,
+    "message": "ClaimRoute API is running",
+    "services": {
+      "api": "healthy",
+      "firestore": "healthy"
+    },
+    "timestamp": "..."
+  }
+  ```
 
 ---
 
-## Local Setup
+## Local Setup & Run Instructions
 
 ### 1. Prerequisites
 
 - **Node.js** `>= 20.0.0`
 - **npm** `>= 10.0.0`
 
-### 2. Backend Setup & Verification
+### 2. Backend Setup & Tests
 
 ```bash
 cd backend
@@ -167,14 +180,14 @@ npm install
 cp .env.example .env
 # Edit .env with your Firebase configuration
 
-# Run unit tests (verifies repository layer and health service)
+# Run automated test suite
 npm test
 
 # Start development server
 npm run dev
 ```
 
-The backend starts at `http://localhost:5000`.
+Backend listens on `http://localhost:5000`.
 
 ### 3. Frontend Setup
 
@@ -185,40 +198,21 @@ cp .env.example .env
 npm run dev
 ```
 
-The client will be running at `http://localhost:5173`.
-
----
-
-## API Documentation
-
-### Health Check (`GET /api/health`)
-
-Returns system status and services connectivity:
-
-```json
-{
-  "success": true,
-  "message": "ClaimRoute API is running",
-  "services": {
-    "api": "healthy",
-    "firestore": "healthy"
-  },
-  "timestamp": "2026-09-28T16:29:23.428Z"
-}
-```
+Frontend serves on `http://localhost:5173`. Open `/deliveries` in your browser to test order creation.
 
 ---
 
 ## Development Roadmap
 
-| Phase         | Description                                                       | Status        |
-| :------------ | :---------------------------------------------------------------- | :------------ |
-| **Phase 1**   | Project Foundation, React+Vite, Express, Health Check             | **Completed** |
-| **Phase 1.5** | Welcoming UI, Design Tokens, Responsive Foundation                | **Completed** |
-| **Phase 2**   | Firebase Admin SDK, Cloud Firestore, Repositories                 | **Completed** |
-| **Phase 3**   | Cryptographic One-Time Claim Token Engine & Recipient Intake Form | Queued        |
-| **Phase 4**   | LangChain & Pydantic AI Extraction for Delivery Notes             | Queued        |
-| **Phase 5**   | Fulfillment Readiness Evaluation & Operations Dispatch            | Queued        |
+| Phase         | Description                                              | Status        |
+| :------------ | :------------------------------------------------------- | :------------ |
+| **Phase 1**   | Project Foundation, React+Vite, Express, Health Check    | **Completed** |
+| **Phase 1.5** | Welcoming UI, Design Tokens, Responsive Foundation       | **Completed** |
+| **Phase 2**   | Firebase Admin SDK, Cloud Firestore, Repositories        | **Completed** |
+| **Phase 3**   | Order Management (Sender Workflows, CRUD, Validation)    | **Completed** |
+| **Phase 4**   | Cryptographic Claim Token Engine & Recipient Intake Form | Queued        |
+| **Phase 5**   | LangChain & Pydantic AI Extraction for Delivery Notes    | Queued        |
+| **Phase 6**   | Fulfillment Readiness Evaluation & Operations Dispatch   | Queued        |
 
 ---
 

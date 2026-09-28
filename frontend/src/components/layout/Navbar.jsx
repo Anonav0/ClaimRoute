@@ -1,16 +1,20 @@
 import React, { useState } from "react";
-import { Package, Menu, X, ArrowRight } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { Package, Menu, X, ArrowRight, ListOrdered } from "lucide-react";
 import Button from "../ui/Button.jsx";
 import StatusIndicator from "../ui/StatusIndicator.jsx";
 
 export function Navbar({ healthState, onClaimClick }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation();
+
+  const isDeliveriesPage = location.pathname === "/deliveries";
 
   return (
     <header className="site-header">
       <div className="header-container">
         {/* Brand */}
-        <a href="/" className="brand-logo" aria-label="ClaimRoute Home">
+        <Link to="/" className="brand-logo" aria-label="ClaimRoute Home">
           <div className="brand-icon-box">
             <Package size={22} className="brand-icon" />
           </div>
@@ -18,18 +22,27 @@ export function Navbar({ healthState, onClaimClick }) {
             <span className="brand-title">ClaimRoute</span>
             <span className="brand-tagline">Effortless Delivery</span>
           </div>
-        </a>
+        </Link>
 
         {/* Desktop Navigation */}
         <nav className="desktop-nav" aria-label="Main Navigation">
-          <a href="#how-it-works" className="nav-link">
+          <Link
+            to="/"
+            className={`nav-link ${location.pathname === "/" ? "active" : ""}`}
+          >
+            Home
+          </Link>
+          <Link
+            to="/deliveries"
+            className={`nav-link ${isDeliveriesPage ? "active" : ""}`}
+          >
+            Your Deliveries
+          </Link>
+          <a href="/#how-it-works" className="nav-link">
             How It Works
           </a>
-          <a href="#trust" className="nav-link">
+          <a href="/#trust" className="nav-link">
             Trust & Privacy
-          </a>
-          <a href="#roadmap" className="nav-link">
-            Roadmap
           </a>
         </nav>
 
@@ -69,26 +82,33 @@ export function Navbar({ healthState, onClaimClick }) {
       {mobileMenuOpen && (
         <div className="mobile-nav-drawer">
           <nav className="mobile-nav-links">
+            <Link
+              to="/"
+              className="mobile-nav-link"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Home
+            </Link>
+            <Link
+              to="/deliveries"
+              className="mobile-nav-link"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Your Deliveries
+            </Link>
             <a
-              href="#how-it-works"
+              href="/#how-it-works"
               className="mobile-nav-link"
               onClick={() => setMobileMenuOpen(false)}
             >
               How It Works
             </a>
             <a
-              href="#trust"
+              href="/#trust"
               className="mobile-nav-link"
               onClick={() => setMobileMenuOpen(false)}
             >
               Trust & Privacy
-            </a>
-            <a
-              href="#roadmap"
-              className="mobile-nav-link"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Roadmap
             </a>
             <div className="mobile-cta-wrapper">
               <Button

@@ -7,14 +7,42 @@ export class OrderRepository extends BaseRepository {
   }
 
   /**
-   * Find orders created by a specific sender
+   * Find orders created by a specific sender, sorted newest first
    * @param {string} senderId
    * @returns {Promise<Array<Object>>}
    */
-  async findBySenderId(senderId) {
+  async findAllBySender(senderId) {
     if (!senderId) return [];
     const snap = await this.collection.where("senderId", "==", senderId).get();
-    return snap.docs.map(formatDoc);
+    const orders = snap.docs.map(formatDoc);
+
+    // Sort descending by createdAt
+    return orders.sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeB - timeA;
+    });
+  }
+
+  /**
+   * Alias for backwards compatibility
+   */
+  async findBySenderId(senderId) {
+    return this.findAllBySender(senderId);
+  }
+
+  /**
+   * Find a specific order ensuring sender scoping
+   * @param {string} orderId
+   * @param {string} senderId
+   * @returns {Promise<Object|null>}
+   */
+  async findByIdAndSender(orderId, senderId) {
+    if (!orderId || !senderId) return null;
+    const order = await this.findById(orderId);
+    if (!order) return null;
+    if (order.senderId !== senderId) return null;
+    return order;
   }
 
   /**
