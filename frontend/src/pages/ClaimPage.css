@@ -306,3 +306,147 @@
   gap: var(--space-sm);
   justify-content: flex-end;
 }
+
+/* ==========================================================================
+   Phase 5 Recipient Form Styles
+   ========================================================================== */
+
+.recipient-form {
+  margin-top: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.form-section {
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg, 12px);
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding-bottom: var(--space-xs);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.section-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs, 4px);
+}
+
+.form-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.text-danger {
+  color: var(--color-error);
+}
+
+.text-muted {
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.form-input,
+.form-textarea {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  color: var(--color-text-primary);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 8px);
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+  box-sizing: border-box;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-subtle);
+}
+
+.form-input.input-error,
+.form-textarea.input-error {
+  border-color: var(--color-error);
+  background: var(--color-error-bg);
+}
+
+.form-input.input-error:focus,
+.form-textarea.input-error:focus {
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+
+.field-error {
+  font-size: 0.775rem;
+  font-weight: 600;
+  color: var(--color-error);
+  margin-top: 2px;
+}
+
+.field-hint {
+  font-size: 0.775rem;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.form-row-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+}
+
+@media (max-width: 520px) {
+  .form-row-two-col {
+    grid-template-columns: 1fr;
+    gap: var(--space-sm);
+  }
+
+  .claim-meta-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-xs);
+  }
+
+  .claim-card {
+    padding: var(--space-md);
+  }
+}
+
+.submit-error-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  border-radius: var(--radius-md, 8px);
+  color: var(--color-error);
+  font-size: 0.85rem;
+  font-weight: 600;
+}

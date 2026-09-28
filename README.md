@@ -2,75 +2,117 @@
 
 ClaimRoute is a fulfillment and delivery-routing platform where a sender can initiate a fulfillment or gift order without having to solicit or store the recipient's sensitive delivery address upfront. Instead, the recipient receives a one-time cryptographic claim link to supply their delivery preferences and address securely.
 
-> **Current Status**: **Phase 4 (Secure Claim System)**. This repository contains the complete full-stack foundation, the warm consumer-first design system, Cloud Firestore persistence, sender order management, and the end-to-end **Secure Claim System** (cryptographic token generation, SHA-256 hashing, server-authoritative expiration, concurrency-safe atomic consumption, and the `/claim/:token` recipient validation interface).
+> **Current Status**: **Phase 5 (Recipient Claim Flow)**. This repository contains the complete full-stack foundation, the warm consumer-first design system, Cloud Firestore persistence, sender order management, secure claim token infrastructure, and the end-to-end **Recipient Claim Experience** (structured address capture, raw delivery notes, backend request validation, atomic concurrency-safe claim completion, and Firestore recipient persistence).
 
 ---
 
-## Secure Claim System Architecture (Phase 4)
+## Recipient Claim Flow Architecture (Phase 5)
 
-Phase 4 establishes the secure claim-token security layer that decouples order initiation from recipient delivery details:
+Phase 5 completes the recipient-facing claim workflow that begins when a recipient opens a secure tokenized claim link and ends when their delivery address is safely recorded:
 
 ```text
-Order Created (CREATED status)
+Recipient Opens /claim/:token
          ↓
-Sender Generates Claim Link (POST /api/orders/:orderId/claim)
+Backend Validates Token (GET /api/claims/:token)
          ↓
-Backend Generates 256-Bit Cryptographic Token (crypto.randomBytes)
+Warm Intake Form Displayed (Item Summary, Recipient Name, Phone, Structured Address, Notes)
          ↓
-Only SHA-256 Hash Persisted in Firestore (claimTokens/{tokenHash})
+Client-Side Validation Checks Formatting
          ↓
-Order Status Transitions: CREATED → CLAIM_PENDING
+Recipient Submits Claim (POST /api/claims/:token/complete)
          ↓
-Sender Shares Time-Limited Claim URL: http://localhost:5173/claim/<raw-token>
+Backend Request Validator Enforces Required Fields & Length Constraints (Rejects Client OrderId)
          ↓
-Recipient Opens Claim Link (GET /api/claims/:token)
+Single Atomic Firestore Transaction (db.runTransaction):
+   ├─ Verifies Token Exists, Not Expired, Not Used
+   ├─ Verifies Order Exists & Is Eligible (Not Cancelled)
+   ├─ Persists Recipient Record (recipients/{recipientId})
+   ├─ Marks Claim Token Used (used: true, usedAt: serverTimestamp)
+   └─ Updates Order Status to CLAIMED (claimedAt: serverTimestamp, recipientId)
          ↓
-Server Hashes Supplied Token, Verifies Expiry & Unused Status
+Confirmation Screen Displayed to Recipient
          ↓
-Minimal Sanitized Delivery Metadata Displayed (Zero PII Leaked)
-         ↓
-Atomic One-Time Consumption (POST /api/claims/:token/consume)
-         ↓
-Firestore Transaction Commits: used = true, Order Status → CLAIMED
-         ↓
-Subsequent Use Attempts Rejected (409 Conflict: CLAIM_TOKEN_USED)
+Subsequent Submissions or Link Refreshes Rejected (409 Conflict: CLAIM_ALREADY_COMPLETED)
 ```
 
 > [!IMPORTANT]
-> **Core Architectural Security Guarantee**: ClaimRoute **never** stores the raw claim token in Cloud Firestore or application logs. Only its deterministic SHA-256 hash is persisted. When a recipient submits their claim link, the backend computes `sha256(token)` to find and validate the record.
+> **Privacy Guarantee**: Recipient delivery addresses and contact numbers are stored exclusively in the server-managed `recipients` Firestore collection and are **never** exposed to the sender or leaked in public validation endpoints. Delivery notes are stored as raw text in Phase 5 for downstream processing in later phases.
 
 ---
 
-## Current Features (Phases 1, 1.5, 2, 3 & 4)
+## Current Features (Phases 1, 1.5, 2, 3, 4 & 5)
 
-- **Frontend Client**: Modern React + Vite application with design tokens, responsive layout, accessible UI primitives, **Sender Deliveries Dashboard** (`/deliveries`), and the new **Recipient Claim Experience** (`/claim/:token`).
-- **Sender Order Management**: Create, view, update, cancel deliveries, and generate single-use claim links through an intuitive, human-centered UI.
-- **Cryptographic Security Layer**: 256-bit URL-safe tokens generated via `crypto.randomBytes(32).toString('base64url')` with SHA-256 hex indexing.
+- **Frontend Client**: Modern React + Vite application with design tokens, responsive layout, accessible UI primitives, **Sender Deliveries Dashboard** (`/deliveries`), and the new **Recipient Claim Form** (`/claim/:token`).
+- **Recipient Intake Experience**: Human-centered delivery form collecting full name, phone number, structured address (`line1`, `line2`, `city`, `state`, `postalCode`, `country`), and optional delivery notes.
+- **Client & Server-Side Validation**: Immediate feedback on the frontend paired with authoritative backend schema validation (`validators/recipientValidator.js`) rejecting missing fields, malformed input, and client-injected protected fields.
+- **Atomic Claim Completion**: Multi-document transactional integrity via Firestore transactions (`claimTokenRepository.completeClaimAtomically`). Token consumption, recipient creation, and order state transition happen together or roll back entirely.
 - **Single Active Token Policy**: Generating a replacement link for an order automatically revokes previous unconsumed tokens to prevent multiple valid links.
-- **Race-Condition-Safe Atomic Consumption**: Concurrency-safe one-time usage enforced via Firestore transactions (`db.runTransaction()`). Simultaneous requests allow strictly one consumption to succeed.
-- **Authoritative Server Expiration**: Expiration enforced strictly by server timestamps (`CLAIM_TOKEN_EXPIRATION_MINUTES=30`). Client timestamps are never trusted.
-- **Minimal Information Exposure**: Public validation endpoints return only the item name, description, quantity, and expiration. Sender IDs, raw tokens, token hashes, and internal database keys are never exposed.
+- **Cryptographic Security Layer**: 256-bit URL-safe tokens generated via `crypto.randomBytes(32).toString('base64url')` with SHA-256 hex indexing. Raw tokens are **never** stored in Firestore.
+- **Minimal Information Exposure**: Public validation endpoints return only item name, description, quantity, and expiration. Sender IDs, raw tokens, token hashes, and internal database keys are never exposed.
 - **Persistence Layer**: Cloud Firestore integration via `firebase-admin` with automatic server timestamps (`FieldValue.serverTimestamp()`) and server-mediated default-deny security rules (`firestore.rules`).
-- **Automated Test Suite**: 39 native `node:test` automated tests covering token randomness, SHA-256 collision resistance, order eligibility, expiration boundaries, zero data leakage, one-time consumption, and concurrent race-condition prevention.
+- **Automated Test Suite**: 49 native `node:test` automated tests covering order workflows, token cryptography, expiration boundaries, recipient validation, duplicate prevention, and race-condition prevention.
 
 ---
 
-## Claim Token Data Model
+## Data Models
 
-Stored in Firestore under `claimTokens/{tokenHash}`:
+### 1. Recipient Document: `recipients/{recipientId}`
 
 ```json
 {
-  "id": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "tokenHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "id": "OAtwoGm753gV4kmtvn4U",
   "orderId": "ceY2osOJRdzJcyAyoZZb",
-  "used": false,
-  "usedAt": null,
+  "fullName": "Priya Sharma",
+  "phone": "+91 98300 12345",
+  "address": {
+    "line1": "42 Park Street",
+    "line2": "Flat 3C, Heritage Residency",
+    "city": "Kolkata",
+    "state": "West Bengal",
+    "postalCode": "700016",
+    "country": "India"
+  },
+  "notes": "Please call on intercom 303 before delivery.",
+  "createdAt": "2026-09-28T17:39:44.633Z",
+  "updatedAt": "2026-09-28T17:39:44.633Z"
+}
+```
+
+### 2. Claim Token Document: `claimTokens/{tokenHash}`
+
+```json
+{
+  "id": "364fa204d380bd6b8c4d2d488...",
+  "tokenHash": "364fa204d380bd6b8c4d2d488...",
+  "orderId": "ceY2osOJRdzJcyAyoZZb",
+  "used": true,
+  "usedAt": "2026-09-28T17:39:44.633Z",
   "revoked": false,
   "revokedAt": null,
-  "expiresAt": "2026-09-28T18:00:00.000Z",
-  "createdAt": "2026-09-28T17:30:00.000Z",
-  "updatedAt": "2026-09-28T17:30:00.000Z"
+  "expiresAt": "2026-09-28T18:09:43.826Z",
+  "createdAt": "2026-09-28T17:39:44.247Z",
+  "updatedAt": "2026-09-28T17:39:44.633Z"
+}
+```
+
+### 3. Order Document: `orders/{orderId}`
+
+```json
+{
+  "id": "ceY2osOJRdzJcyAyoZZb",
+  "senderId": "development-sender",
+  "item": {
+    "name": "Artisanal Coffee Box",
+    "description": "Roast beans with ceramic dripper"
+  },
+  "quantity": 1,
+  "deliveryTimeframe": "By Friday",
+  "notes": "Fragile glassware",
+  "status": "CLAIMED",
+  "claimedAt": "2026-09-28T17:39:44.633Z",
+  "recipientId": "OAtwoGm753gV4kmtvn4U",
+  "createdAt": "2026-09-28T16:59:50.844Z",
+  "updatedAt": "2026-09-28T17:39:44.633Z"
 }
 ```
 
@@ -82,11 +124,11 @@ Stored in Firestore under `claimTokens/{tokenHash}`:
 | :------------------ | :----------------- | :----------------------------------------------------------------------- |
 | `CREATED`           | Phase 3 (Active)   | Order created by sender; fully editable and cancellable.                 |
 | `CLAIM_PENDING`     | Phase 4 (Active)   | Claim token generated; order locked against edits, awaiting recipient.   |
-| `CLAIMED`           | Phase 4 (Active)   | Claim link unlocked and consumed atomically by recipient.                |
-| `PROCESSING`        | Phase 5 (Upcoming) | Recipient address and constraints undergoing AI extraction & validation. |
-| `ROUTING_READY`     | Phase 5 (Upcoming) | Delivery constraints extracted; ready for courier routing.               |
-| `FULFILLMENT_READY` | Phase 5 (Upcoming) | Route finalized and queued for delivery.                                 |
-| `COMPLETED`         | Phase 5 (Upcoming) | Package delivered to recipient.                                          |
+| `CLAIMED`           | Phase 5 (Active)   | Recipient submitted delivery address & preferences; claim completed.     |
+| `PROCESSING`        | Phase 6 (Upcoming) | Recipient address and constraints undergoing AI extraction & validation. |
+| `ROUTING_READY`     | Phase 6 (Upcoming) | Delivery constraints extracted; ready for courier routing.               |
+| `FULFILLMENT_READY` | Phase 7 (Upcoming) | Route finalized and queued for delivery.                                 |
+| `COMPLETED`         | Phase 7 (Upcoming) | Package delivered to recipient.                                          |
 | `CANCELLED`         | Phase 3 (Active)   | Order cancelled by sender; preserved in history.                         |
 | `EXPIRED`           | Phase 4 (Active)   | Claim link passed expiration date without consumption.                   |
 
@@ -104,17 +146,6 @@ All order requests automatically scope to the server-controlled sender context (
 - `PATCH /api/orders/:orderId`: Update editable fields while in `CREATED` status.
 - `POST /api/orders/:orderId/cancel`: Cancel an order in `CREATED` or `CLAIM_PENDING` status.
 - `POST /api/orders/:orderId/claim`: Generate a secure, single-use claim link for an order.
-  - **Response** (`201 Created`):
-    ```json
-    {
-      "success": true,
-      "data": {
-        "orderId": "ceY2osOJRdzJcyAyoZZb",
-        "claimUrl": "http://localhost:5173/claim/dGhpc2lzYXNhbXBsZXRva2Vu...",
-        "expiresAt": "2026-09-28T18:00:00.000Z"
-      }
-    }
-    ```
 
 ### 2. Recipient Claim Endpoints (`/api/claims`)
 
@@ -143,25 +174,41 @@ Public endpoints decoupled from sender authorization context.
   }
   ```
 
-#### Atomically Consume Claim Token
+#### Complete Claim with Recipient Information
 
-- **Method**: `POST /api/claims/:token/consume`
-- **Purpose**: Atomically marks the token `used: true` and transitions the order status to `CLAIMED`.
+- **Method**: `POST /api/claims/:token/complete`
+- **Purpose**: Atomically validates recipient address and delivery notes, creates the recipient record in Firestore, marks the token as used, and updates the order status to `CLAIMED`.
+- **Request Body**:
+  ```json
+  {
+    "fullName": "Priya Sharma",
+    "phone": "+91 98300 12345",
+    "address": {
+      "line1": "42 Park Street",
+      "line2": "Flat 3C, Heritage Residency",
+      "city": "Kolkata",
+      "state": "West Bengal",
+      "postalCode": "700016",
+      "country": "India"
+    },
+    "notes": "Please call on intercom 303 before delivery."
+  }
+  ```
 - **Response** (`200 OK`):
   ```json
   {
     "success": true,
     "data": {
-      "consumed": true,
       "orderId": "ceY2osOJRdzJcyAyoZZb",
-      "claimedAt": "2026-09-28T17:35:12.441Z"
+      "status": "CLAIMED",
+      "recipientId": "OAtwoGm753gV4kmtvn4U"
     }
   }
   ```
 - **Error Responses**:
-  - `400 Bad Request`: `CLAIM_TOKEN_INVALID` (malformed or missing token)
+  - `400 Bad Request`: `VALIDATION_ERROR` (missing or invalid address fields) or `CLAIM_TOKEN_INVALID`
   - `404 Not Found`: `CLAIM_TOKEN_INVALID` or `CLAIM_ORDER_NOT_FOUND`
-  - `409 Conflict`: `CLAIM_TOKEN_USED` (already consumed) or `CLAIM_ORDER_NOT_ELIGIBLE` (order cancelled)
+  - `409 Conflict`: `CLAIM_ALREADY_COMPLETED` (already claimed) or `CLAIM_ORDER_NOT_ELIGIBLE` (order cancelled)
   - `410 Gone`: `CLAIM_TOKEN_EXPIRED` (link exceeded 30-minute validity)
 
 ### 3. System & Health
@@ -219,7 +266,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173/deliveries` to create orders and generate claim links. Open `/claim/<token>` to preview and consume claim links.
+Open `http://localhost:5173/deliveries` to create orders and generate claim links. Open `/claim/<token>` to fill out the recipient claim form.
 
 ---
 
@@ -232,9 +279,10 @@ Open `http://localhost:5173/deliveries` to create orders and generate claim link
 | **Phase 2**   | Firebase Admin SDK, Cloud Firestore, Repositories        | **Completed** |
 | **Phase 3**   | Order Management (Sender Workflows, CRUD, Validation)    | **Completed** |
 | **Phase 4**   | Secure Claim System (Tokens, Hashing, Expiration, Claim) | **Completed** |
-| **Phase 5**   | Recipient Claim Flow (Address Form & Preferences Intake) | Queued        |
-| **Phase 6**   | LangChain & Pydantic AI Extraction for Delivery Notes    | Queued        |
-| **Phase 7**   | Fulfillment Readiness & Operations Dispatch              | Queued        |
+| **Phase 5**   | Recipient Claim Flow (Address Form & Preferences Intake) | **Completed** |
+| **Phase 6**   | Security Hardening & Rate Limiting                       | Queued        |
+| **Phase 7**   | LangChain & Pydantic AI Extraction for Delivery Notes    | Queued        |
+| **Phase 8**   | Fulfillment Readiness & Operations Dispatch              | Queued        |
 
 ---
 

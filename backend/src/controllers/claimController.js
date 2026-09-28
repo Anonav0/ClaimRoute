@@ -51,8 +51,28 @@ export const consumeClaim = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/claims/:token/complete
+ * Atomically validates recipient details, stores recipient record, consumes token, and updates order to CLAIMED
+ */
+export const completeClaim = async (req, res, next) => {
+  try {
+    const result = await claimService.completeClaim(
+      req.params.token,
+      req.validatedRecipient,
+    );
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 export default {
   generateClaim,
   validateClaim,
   consumeClaim,
+  completeClaim,
 };

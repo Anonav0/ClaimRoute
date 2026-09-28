@@ -230,6 +230,142 @@ export class ClaimTokenRepository extends BaseRepository {
       };
     });
   }
+
+  /**
+   * Atomically completes a recipient claim:
+   * 1. Verifies token validity, expiration, and unused status inside a Firestore transaction.
+   * 2. Verifies order existence and eligibility.
+   * 3. Creates the recipient record in the `recipients` collection.
+   * 4. Marks the token as used with server timestamp.
+   * 5. Transitions the order status to CLAIMED with recipientId.
+   *
+   * Concurrency-safe: Exactly one request succeeds even under high-concurrency race conditions.
+   *
+   * @param {Object} params
+   * @param {string} params.tokenHash
+   * @param {Object} params.recipientData
+   * @returns {Promise<{ orderId: string, status: string, recipientId: string }>}
+   */
+  async completeClaimAtomically({ tokenHash, recipientData }) {
+    if (!tokenHash) {
+      throw new AppError("Token hash is required.", 400, "CLAIM_TOKEN_INVALID");
+    }
+
+    return db.runTransaction(async (transaction) => {
+      const tokenRef = this.collection.doc(tokenHash);
+      const tokenSnap = await transaction.get(tokenRef);
+
+      if (!tokenSnap.exists) {
+        throw new NotFoundError(
+          "Claim token not found or invalid.",
+          "CLAIM_TOKEN_INVALID",
+        );
+      }
+
+      const tokenData = tokenSnap.data();
+
+      if (tokenData.revoked) {
+        throw new AppError(
+          "This claim link has been revoked or replaced by the sender.",
+          410,
+          "CLAIM_TOKEN_INVALID",
+        );
+      }
+
+      if (tokenData.used) {
+        throw new ConflictError(
+          "This claim has already been completed.",
+          "CLAIM_ALREADY_COMPLETED",
+        );
+      }
+
+      // Authoritative server-side expiration verification
+      const now = new Date();
+      let expiresAtDate;
+      if (
+        tokenData.expiresAt &&
+        typeof tokenData.expiresAt.toDate === "function"
+      ) {
+        expiresAtDate = tokenData.expiresAt.toDate();
+      } else if (tokenData.expiresAt) {
+        expiresAtDate = new Date(tokenData.expiresAt);
+      } else {
+        expiresAtDate = new Date(0);
+      }
+
+      if (now >= expiresAtDate) {
+        throw new AppError(
+          "This claim link has expired.",
+          410,
+          "CLAIM_TOKEN_EXPIRED",
+        );
+      }
+
+      // Check associated order within the transaction
+      const orderRef = db.collection(COLLECTIONS.ORDERS).doc(tokenData.orderId);
+      const orderSnap = await transaction.get(orderRef);
+
+      if (!orderSnap.exists) {
+        throw new NotFoundError(
+          "Associated order not found.",
+          "CLAIM_ORDER_NOT_FOUND",
+        );
+      }
+
+      const orderData = orderSnap.data();
+
+      if (orderData.status === ORDER_STATUS.CANCELLED) {
+        throw new ConflictError(
+          "Associated order has been cancelled by the sender.",
+          "CLAIM_ORDER_NOT_ELIGIBLE",
+        );
+      }
+
+      if (orderData.status === ORDER_STATUS.COMPLETED) {
+        throw new ConflictError(
+          "Associated order is already completed.",
+          "CLAIM_ORDER_NOT_ELIGIBLE",
+        );
+      }
+
+      const nowTimestamp = serverTimestamp();
+      const recipientRef = db.collection(COLLECTIONS.RECIPIENTS).doc();
+
+      const recipientDocData = {
+        orderId: tokenData.orderId,
+        fullName: recipientData.fullName,
+        phone: recipientData.phone,
+        address: recipientData.address,
+        notes: recipientData.notes || null,
+        createdAt: nowTimestamp,
+        updatedAt: nowTimestamp,
+      };
+
+      // 1. Create recipient record
+      transaction.set(recipientRef, recipientDocData);
+
+      // 2. Mark token as used
+      transaction.update(tokenRef, {
+        used: true,
+        usedAt: nowTimestamp,
+        updatedAt: nowTimestamp,
+      });
+
+      // 3. Update order status to CLAIMED
+      transaction.update(orderRef, {
+        status: ORDER_STATUS.CLAIMED,
+        claimedAt: nowTimestamp,
+        recipientId: recipientRef.id,
+        updatedAt: nowTimestamp,
+      });
+
+      return {
+        orderId: tokenData.orderId,
+        status: ORDER_STATUS.CLAIMED,
+        recipientId: recipientRef.id,
+      };
+    });
+  }
 }
 
 export const claimTokenRepository = new ClaimTokenRepository();

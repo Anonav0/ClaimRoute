@@ -217,6 +217,50 @@ export class ClaimService {
       claimedAt: new Date().toISOString(),
     };
   }
+
+  /**
+   * Atomically completes a claim by validating recipient data, persisting recipient information,
+   * consuming the token, and updating the order to CLAIMED status.
+   *
+   * @param {string} rawToken - Raw claim token from URL
+   * @param {Object} recipientData - Validated recipient details (fullName, phone, address, notes)
+   * @returns {Promise<{ orderId: string, status: string, recipientId: string }>}
+   */
+  async completeClaim(rawToken, recipientData) {
+    if (!rawToken || !isValidTokenFormat(rawToken)) {
+      throw new BadRequestError(
+        "Invalid claim token format.",
+        "CLAIM_TOKEN_INVALID",
+      );
+    }
+
+    if (!recipientData || typeof recipientData !== "object") {
+      throw new BadRequestError(
+        "Recipient delivery details are required.",
+        "VALIDATION_ERROR",
+      );
+    }
+
+    const tokenHash = hashClaimToken(rawToken);
+
+    // Concurrency-safe atomic transaction
+    const result = await claimTokenRepository.completeClaimAtomically({
+      tokenHash,
+      recipientData,
+    });
+
+    // Privacy notice: NEVER log recipient address, phone, or raw token
+    logger.info("Claim completed successfully", {
+      orderId: result.orderId,
+      recipientId: result.recipientId,
+    });
+
+    return {
+      orderId: result.orderId,
+      status: result.status,
+      recipientId: result.recipientId,
+    };
+  }
 }
 
 export const claimService = new ClaimService();
