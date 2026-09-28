@@ -6,6 +6,7 @@ import {
   ForbiddenError,
   BadRequestError,
 } from "../errors/AppError.js";
+import { authorizationService } from "./authorizationService.js";
 import logger from "../utils/logger.js";
 
 export class OrderService {
@@ -54,13 +55,12 @@ export class OrderService {
       );
     }
 
-    // Authorization check
-    if (order.senderId !== senderId) {
-      throw new ForbiddenError(
-        "You do not have permission to access this order.",
-        "ACCESS_DENIED",
-      );
-    }
+    // Authorization check via centralized authorization service
+    const user =
+      typeof senderId === "object" && senderId !== null
+        ? senderId
+        : { id: senderId, role: "SENDER" };
+    authorizationService.authorizeOrderAccess(user, order);
 
     return order;
   }

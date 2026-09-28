@@ -28,6 +28,12 @@ export class ValidationError extends AppError {
   }
 }
 
+export class UnauthorizedError extends AppError {
+  constructor(message = "Authentication required", code = "UNAUTHORIZED") {
+    super(message, 401, code);
+  }
+}
+
 export class ConflictError extends AppError {
   constructor(message = "Resource state conflict", code = "CONFLICT") {
     super(message, 409, code);

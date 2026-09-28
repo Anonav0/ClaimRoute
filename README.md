@@ -2,7 +2,7 @@
 
 ClaimRoute is a fulfillment and delivery-routing platform where a sender can initiate a fulfillment or gift order without having to solicit or store the recipient's sensitive delivery address upfront. Instead, the recipient receives a one-time cryptographic claim link to supply their delivery preferences and address securely.
 
-> **Current Status**: **Phase 5 (Recipient Claim Flow)**. This repository contains the complete full-stack foundation, the warm consumer-first design system, Cloud Firestore persistence, sender order management, secure claim token infrastructure, and the end-to-end **Recipient Claim Experience** (structured address capture, raw delivery notes, backend request validation, atomic concurrency-safe claim completion, and Firestore recipient persistence).
+> **Current Status**: **Phase 6 (Security Hardening)**. This repository contains the complete full-stack foundation, the warm consumer-first design system, Cloud Firestore persistence, sender order management, secure claim token infrastructure, the end-to-end Recipient Claim Experience, and comprehensive **Security Hardening** (Firestore deny-by-default rules, sender authorization abstraction, public rate limiting, strict referrer policy, mass assignment protection, recursive log redaction, production error sanitization, response DTO mappers, and fail-fast environment validation).
 
 ---
 
@@ -217,6 +217,61 @@ Public endpoints decoupled from sender authorization context.
 
 ---
 
+---
+
+## Security Architecture
+
+ClaimRoute implements a defense-in-depth security model:
+
+```text
+Browser / Client (Untrusted)
+       │
+       ▼
+Express API Layer (Rate Limiting, Strict Referrer, Helmet, CORS, 100kb Limits)
+       │
+       ▼
+Authentication & Authorization Layer (req.user context, authorizeOrderAccess)
+       │
+       ▼
+Service Layer & Response DTOs (mapOrderResponse, mapClaimPreviewResponse)
+       │
+       ▼
+Firebase Admin SDK (Privileged Backend Credentials)
+       │
+       ▼
+Cloud Firestore (Deny-By-Default Client Rules)
+```
+
+### 1. Trust Boundaries & Principles
+
+- **Deny By Default**: Direct client-side reads/writes to Firestore collections are denied (`firestore.rules`). All operations are server-mediated.
+- **Order Ownership & Isolation**: Senders are strictly isolated to their own orders. Attempted cross-tenant queries trigger HTTP 403 `ACCESS_DENIED`.
+- **Claim Token as Capability Credential**: 256-bit URL-safe tokens grant capability only to inspect minimal delivery preview metadata and submit delivery details once. Raw tokens are never persisted or logged.
+- **Mass Assignment Protection**: Order updates strictly reject attempts to modify `id`, `senderId`, `status`, `createdAt`, `updatedAt`, `claimedAt`, `recipientId`, `recipient`, `tokenHash`, or `claimToken`.
+- **Response DTO Mappers**: Internal database attributes, security hashes, and unneeded recipient PII are stripped from sender and public API responses.
+- **Rate Limiting**: Sliding-window rate limiting on public capability endpoints (30 requests / 15 minutes per IP) mitigates token guessing and DoS.
+- **Security Headers & Referrer Policy**: `Helmet` enforces `strict-origin-when-cross-origin` to prevent claim token leakage in HTTP `Referer` headers when external links are clicked.
+- **Recursive Metadata Sanitization**: Server logger automatically redacts tokens, hashes, passwords, private keys, phones, addresses, and delivery notes.
+- **Request Correlation & Error Sanitization**: Requests receive unique `X-Request-Id` headers. In production (`NODE_ENV=production`), unexpected system errors are sanitized to generic messages with correlated request IDs.
+- **Fail-Fast Environment Validation**: `validateEnv()` audits required variables on startup and halts execution cleanly without logging secrets.
+
+### 2. Secret Management
+
+- **Local Development**: Configured in untracked `.env` files.
+- **Production**: Backed by Google Cloud Secret Manager or runtime secrets; zero credentials are committed to version control.
+- **Frontend Safety**: Only `VITE_`-prefixed variables are bundled to browser code; server credentials never enter the client bundle.
+
+### 3. Protected Sensitive Collections
+
+- `users`: User profiles and future role scopes (server-mediated).
+- `orders`: Order fulfillment details (ownership-restricted).
+- `claimTokens`: SHA-256 token hashes, expiration, and consumption states (server-only).
+- `recipients`: Recipient PII including full names, phone numbers, and delivery addresses (server-only).
+- `deliveryConstraints`: AI-extracted structured delivery constraints (server-only).
+- `routingRequests`: Downstream routing queue items (server-only).
+
+---
+
 ## Environment Variables
 
 ### Backend (`backend/.env`)
@@ -280,7 +335,7 @@ Open `http://localhost:5173/deliveries` to create orders and generate claim link
 | **Phase 3**   | Order Management (Sender Workflows, CRUD, Validation)    | **Completed** |
 | **Phase 4**   | Secure Claim System (Tokens, Hashing, Expiration, Claim) | **Completed** |
 | **Phase 5**   | Recipient Claim Flow (Address Form & Preferences Intake) | **Completed** |
-| **Phase 6**   | Security Hardening & Rate Limiting                       | Queued        |
+| **Phase 6**   | Security Hardening & Rate Limiting (69 Tests Passing)    | **Completed** |
 | **Phase 7**   | LangChain & Pydantic AI Extraction for Delivery Notes    | Queued        |
 | **Phase 8**   | Fulfillment Readiness & Operations Dispatch              | Queued        |
 

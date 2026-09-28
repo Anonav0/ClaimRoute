@@ -1,40 +1,51 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // ClaimRoute Secure Architecture Baseline:
-    // All client operations must be mediated through the Node.js Express Backend
-    // using the privileged Firebase Admin SDK.
-    // Direct unauthenticated browser reads/writes are denied by default to protect
-    // recipient addresses and one-time claim tokens.
+    // =========================================================================
+    // ClaimRoute Security Hardening Baseline (Phase 6)
+    // =========================================================================
+    // Trust Boundary Architecture:
+    // Browser / Public Client -> Express REST API -> Firebase Admin SDK -> Firestore
+    //
+    // Principle: DENY BY DEFAULT
+    // The browser is NEVER trusted as an authorization boundary. Direct client reads
+    // and writes to Firestore are universally forbidden to prevent unauthorized
+    // access to recipient PII (names, phone numbers, addresses, delivery notes),
+    // claim tokens, order documents, and operational routing queues.
+    //
+    // The privileged Firebase Admin SDK on the backend server bypasses these client-side
+    // security rules. The Express backend serves as the sole authoritative enforcement
+    // gatekeeper (authenticating senders, checking order ownership, validating claim capability).
+    // =========================================================================
 
     // Deny all direct client access by default
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Future Authenticated Sender & Operations baseline (Phase 3+)
+    // Protected Core Collections (server-mediated access only):
     match /users/{userId} {
-      allow read, write: if false; // Mediated via backend
+      allow read, write: if false;
     }
 
     match /orders/{orderId} {
-      allow read, write: if false; // Mediated via backend
+      allow read, write: if false;
     }
 
     match /claimTokens/{tokenHash} {
-      allow read, write: if false; // Privileged server-only
+      allow read, write: if false;
     }
 
     match /recipients/{recipientId} {
-      allow read, write: if false; // PII protected: server-only
+      allow read, write: if false;
     }
 
     match /deliveryConstraints/{constraintId} {
-      allow read, write: if false; // Server-only
+      allow read, write: if false;
     }
 
     match /routingRequests/{requestId} {
-      allow read, write: if false; // Server-only
+      allow read, write: if false;
     }
   }
 }

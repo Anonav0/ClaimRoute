@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { senderContext } from "../middleware/senderContext.js";
+import { authenticateUser, requireAuth } from "../middleware/auth.js";
 import {
   validateCreateOrder,
   validateUpdateOrder,
@@ -15,8 +15,9 @@ import { generateClaim } from "../controllers/claimController.js";
 
 const router = Router();
 
-// Apply sender context middleware to all order operations
-router.use(senderContext);
+// Apply authentication middleware and ownership check boundary to all order operations
+router.use(authenticateUser);
+router.use(requireAuth);
 
 // Order CRUD and workflow routes
 router.post("/", validateCreateOrder, createOrder);

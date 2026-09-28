@@ -1,7 +1,10 @@
 import http from "http";
 import app from "./app.js";
-import config from "./config/env.js";
+import config, { validateEnv } from "./config/env.js";
 import logger from "./utils/logger.js";
+
+// Fail fast if required environment variables are missing
+validateEnv();
 
 const server = http.createServer(app);
 

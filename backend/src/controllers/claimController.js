@@ -1,4 +1,8 @@
 import { claimService } from "../services/claimService.js";
+import {
+  mapClaimPreviewResponse,
+  mapClaimCompletionResponse,
+} from "../utils/responseMappers.js";
 
 /**
  * POST /api/orders/:orderId/claim
@@ -28,7 +32,7 @@ export const validateClaim = async (req, res, next) => {
     const claimInfo = await claimService.validateClaimToken(req.params.token);
     return res.status(200).json({
       success: true,
-      data: claimInfo,
+      data: mapClaimPreviewResponse(claimInfo),
     });
   } catch (error) {
     return next(error);
@@ -63,7 +67,7 @@ export const completeClaim = async (req, res, next) => {
     );
     return res.status(200).json({
       success: true,
-      data: result,
+      data: mapClaimCompletionResponse(result),
     });
   } catch (error) {
     return next(error);

@@ -7,6 +7,10 @@ const PROTECTED_FIELDS = [
   "createdAt",
   "updatedAt",
   "claimedAt",
+  "recipientId",
+  "recipient",
+  "tokenHash",
+  "claimToken",
 ];
 
 /**

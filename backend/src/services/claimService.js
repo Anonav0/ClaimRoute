@@ -13,6 +13,7 @@ import {
   ForbiddenError,
   AppError,
 } from "../errors/AppError.js";
+import { authorizationService } from "./authorizationService.js";
 import config from "../config/env.js";
 import logger from "../utils/logger.js";
 
@@ -47,13 +48,12 @@ export class ClaimService {
       );
     }
 
-    // Sender isolation check
-    if (order.senderId !== senderId) {
-      throw new ForbiddenError(
-        "You do not have permission to generate claim links for this order.",
-        "ACCESS_DENIED",
-      );
-    }
+    // Sender isolation check via centralized authorization service
+    const user =
+      typeof senderId === "object" && senderId !== null
+        ? senderId
+        : { id: senderId, role: "SENDER" };
+    authorizationService.authorizeOrderAccess(user, order);
 
     // Order status eligibility check
     const eligibleStatuses = [ORDER_STATUS.CREATED, ORDER_STATUS.CLAIM_PENDING];

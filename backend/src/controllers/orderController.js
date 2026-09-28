@@ -1,4 +1,8 @@
 import { orderService } from "../services/orderService.js";
+import {
+  mapOrderResponse,
+  mapOrderListResponse,
+} from "../utils/responseMappers.js";
 
 /**
  * POST /api/orders
@@ -12,7 +16,7 @@ export const createOrder = async (req, res, next) => {
     );
     return res.status(201).json({
       success: true,
-      data: order,
+      data: mapOrderResponse(order),
     });
   } catch (error) {
     return next(error);
@@ -31,7 +35,7 @@ export const getOrder = async (req, res, next) => {
     );
     return res.status(200).json({
       success: true,
-      data: order,
+      data: mapOrderResponse(order),
     });
   } catch (error) {
     return next(error);
@@ -47,7 +51,7 @@ export const listOrders = async (req, res, next) => {
     const orders = await orderService.listSenderOrders(req.senderId);
     return res.status(200).json({
       success: true,
-      data: orders,
+      data: mapOrderListResponse(orders),
       count: orders.length,
     });
   } catch (error) {
@@ -68,7 +72,7 @@ export const updateOrder = async (req, res, next) => {
     );
     return res.status(200).json({
       success: true,
-      data: updated,
+      data: mapOrderResponse(updated),
     });
   } catch (error) {
     return next(error);
@@ -87,7 +91,7 @@ export const cancelOrder = async (req, res, next) => {
     );
     return res.status(200).json({
       success: true,
-      data: cancelled,
+      data: mapOrderResponse(cancelled),
     });
   } catch (error) {
     return next(error);

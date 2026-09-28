@@ -1,27 +1,15 @@
 /**
- * Sender Context Middleware (Development Phase 3)
+ * Sender Context Middleware (Legacy Compatibility Bridge)
  *
- * In Phase 3, full user authentication is deferred. This middleware establishes
- * a reliable, server-controlled sender context for all order operations.
- *
- * By default, requests are scoped to 'development-sender', but callers can
- * optionally provide 'X-Sender-Id' to verify multi-sender isolation.
- *
- * This pattern isolates sender resolution so future phases can seamlessly swap
- * in Firebase Auth JWT verification without altering controllers or services.
+ * Forwards to the formal Phase 6 authentication middleware while maintaining
+ * backward compatibility for any Phase 3/4/5 consumers.
  */
-export const DEFAULT_SENDER_ID = "development-sender";
+import { authenticateUser, DEFAULT_DEV_SENDER_ID } from "./auth.js";
+
+export const DEFAULT_SENDER_ID = DEFAULT_DEV_SENDER_ID;
 
 export const senderContext = (req, res, next) => {
-  const headerSenderId = req.headers["x-sender-id"];
-
-  if (typeof headerSenderId === "string" && headerSenderId.trim().length > 0) {
-    req.senderId = headerSenderId.trim();
-  } else {
-    req.senderId = DEFAULT_SENDER_ID;
-  }
-
-  next();
+  return authenticateUser(req, res, next);
 };
 
 export default senderContext;
