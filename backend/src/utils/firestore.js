@@ -10,6 +10,7 @@ export const COLLECTIONS = Object.freeze({
   RECIPIENTS: "recipients",
   DELIVERY_CONSTRAINTS: "deliveryConstraints",
   ROUTING_REQUESTS: "routingRequests",
+  FULFILLMENTS: "fulfillments",
   HEALTH_CHECK: "_healthCheck",
 });
 
@@ -26,6 +27,31 @@ export const ORDER_STATUS = Object.freeze({
   COMPLETED: "COMPLETED",
   CANCELLED: "CANCELLED",
   EXPIRED: "EXPIRED",
+});
+
+/**
+ * Fulfillment Status Enumeration
+ */
+export const FULFILLMENT_STATUS = Object.freeze({
+  PENDING: "PENDING",
+  PROCESSING: "PROCESSING",
+  ROUTING_READY: "ROUTING_READY",
+  READY: "READY",
+  COMPLETED: "COMPLETED",
+  FAILED: "FAILED",
+  CANCELLED: "CANCELLED",
+});
+
+/**
+ * Routing Status Enumeration
+ */
+export const ROUTING_STATUS = Object.freeze({
+  PENDING: "PENDING",
+  READY: "READY",
+  IN_PROGRESS: "IN_PROGRESS",
+  COMPLETED: "COMPLETED",
+  FAILED: "FAILED",
+  CANCELLED: "CANCELLED",
 });
 
 /**
@@ -92,6 +118,8 @@ export function serverTimestamp() {
 export default {
   COLLECTIONS,
   ORDER_STATUS,
+  FULFILLMENT_STATUS,
+  ROUTING_STATUS,
   USER_ROLES,
   formatDoc,
   serverTimestamp,

@@ -2153,3 +2153,95 @@
   color: var(--color-text-muted);
   flex-shrink: 0;
 }
+
+/* ==========================================================================
+   Phase 8: Fulfillment & Routing Operational Workflow Section
+   ========================================================================== */
+.detail-operational-section {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  box-shadow: var(--shadow-sm);
+}
+
+.operational-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--color-border-subtle);
+  padding-bottom: var(--space-xs);
+}
+
+.operational-title-box {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.operational-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  background: var(--color-bg-subtle);
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm);
+}
+
+.operational-check-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 0.825rem;
+  color: var(--color-text-secondary);
+}
+
+.operational-check-item.complete {
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.check-icon-done {
+  color: var(--color-success);
+}
+
+.check-icon-pending {
+  color: var(--color-text-muted);
+}
+
+.operational-snapshot-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: white;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  padding: var(--space-xs) var(--space-sm);
+  font-size: 0.8rem;
+}
+
+.operational-snapshot-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.operational-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-xs);
+  border-top: 1px dashed var(--color-border-subtle);
+}
+
+.operational-status-msg {
+  font-size: 0.825rem;
+  color: var(--color-text-secondary);
+}

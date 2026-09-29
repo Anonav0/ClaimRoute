@@ -1,5 +1,13 @@
 import React from "react";
-import { Clock, CheckCircle2, XCircle, PackageCheck } from "lucide-react";
+import {
+  Clock,
+  CheckCircle2,
+  XCircle,
+  PackageCheck,
+  RotateCw,
+  Compass,
+  Truck,
+} from "lucide-react";
 import Badge from "../ui/Badge.jsx";
 
 export function OrderStatusBadge({ status, size = "sm" }) {
@@ -22,10 +30,28 @@ export function OrderStatusBadge({ status, size = "sm" }) {
           Claimed
         </Badge>
       );
+    case "PROCESSING":
+      return (
+        <Badge variant="warm" size={size} icon={RotateCw}>
+          Processing
+        </Badge>
+      );
+    case "ROUTING_READY":
+      return (
+        <Badge variant="primary" size={size} icon={Compass}>
+          Routing Ready
+        </Badge>
+      );
+    case "FULFILLMENT_READY":
+      return (
+        <Badge variant="warm" size={size} icon={Truck}>
+          Fulfillment Ready
+        </Badge>
+      );
     case "COMPLETED":
       return (
         <Badge variant="success" size={size} icon={PackageCheck}>
-          Fulfilled
+          Completed
         </Badge>
       );
     case "CANCELLED":

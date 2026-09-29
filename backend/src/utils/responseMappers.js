@@ -112,10 +112,170 @@ export function mapDeliveryConstraintsResponse(constraints) {
   };
 }
 
+/**
+ * Filter fulfillment record for safe API exposure
+ * @param {Object} fulfillment
+ * @returns {Object|null}
+ */
+export function mapFulfillmentResponse(fulfillment) {
+  if (!fulfillment) return null;
+
+  return {
+    id: fulfillment.id || null,
+    orderId: fulfillment.orderId,
+    status: fulfillment.status,
+    processingStartedAt: fulfillment.processingStartedAt || null,
+    routingReadyAt: fulfillment.routingReadyAt || null,
+    fulfillmentReadyAt: fulfillment.fulfillmentReadyAt || null,
+    completedAt: fulfillment.completedAt || null,
+    createdAt: fulfillment.createdAt || null,
+    updatedAt: fulfillment.updatedAt || null,
+  };
+}
+
+/**
+ * Filter routing request entity for safe API exposure
+ * @param {Object} routingRequest
+ * @returns {Object|null}
+ */
+export function mapRoutingRequestResponse(routingRequest) {
+  if (!routingRequest) return null;
+
+  return {
+    id: routingRequest.id,
+    orderId: routingRequest.orderId,
+    recipientId: routingRequest.recipientId,
+    status: routingRequest.status,
+    destination: routingRequest.destination
+      ? {
+          city: routingRequest.destination.city || "",
+          state: routingRequest.destination.state || "",
+          postalCode: routingRequest.destination.postalCode || "",
+          country: routingRequest.destination.country || "",
+        }
+      : null,
+    deliveryWindow: routingRequest.deliveryWindow || null,
+    accessInstructions: Array.isArray(routingRequest.accessInstructions)
+      ? routingRequest.accessInstructions
+      : [],
+    dietaryConstraints: Array.isArray(routingRequest.dietaryConstraints)
+      ? routingRequest.dietaryConstraints
+      : [],
+    deliveryInstructions: Array.isArray(routingRequest.deliveryInstructions)
+      ? routingRequest.deliveryInstructions
+      : [],
+    source: routingRequest.source || "RECIPIENT_NOTES",
+    mockRoute: routingRequest.mockRoute || null,
+    requestedAt: routingRequest.requestedAt || null,
+    readyAt: routingRequest.readyAt || null,
+    completedAt: routingRequest.completedAt || null,
+    createdAt: routingRequest.createdAt || null,
+    updatedAt: routingRequest.updatedAt || null,
+  };
+}
+
+/**
+ * Filter readiness check output for API exposure
+ * @param {Object} readiness
+ * @returns {Object}
+ */
+export function mapReadinessResponse(readiness) {
+  if (!readiness) return null;
+
+  return {
+    isReady: Boolean(readiness.isReady),
+    orderId: readiness.orderId,
+    orderStatus: readiness.orderStatus,
+    checks: readiness.checks || {},
+    constraintsStatus: readiness.constraintsStatus || "NO_CONSTRAINTS",
+    missingPrerequisites: Array.isArray(readiness.missingPrerequisites)
+      ? readiness.missingPrerequisites
+      : [],
+  };
+}
+
+/**
+ * Filter consolidated operations summary DTO
+ * @param {Object} summary - { order, fulfillment, routing, recipient, deliveryConstraints }
+ * @returns {Object}
+ */
+export function mapOperationsSummaryResponse(summary) {
+  if (!summary) return null;
+  const { order, fulfillment, routing, recipient, deliveryConstraints } =
+    summary;
+
+  return {
+    order: order
+      ? {
+          id: order.id,
+          status: order.status,
+          claimedAt: order.claimedAt || null,
+          routingReadyAt: order.routingReadyAt || null,
+          fulfillmentReadyAt: order.fulfillmentReadyAt || null,
+          completedAt: order.completedAt || null,
+        }
+      : null,
+    fulfillment: fulfillment
+      ? {
+          status: fulfillment.status,
+          processingStartedAt: fulfillment.processingStartedAt || null,
+          routingReadyAt: fulfillment.routingReadyAt || null,
+          fulfillmentReadyAt: fulfillment.fulfillmentReadyAt || null,
+          completedAt: fulfillment.completedAt || null,
+        }
+      : null,
+    routing: routing
+      ? {
+          id: routing.id,
+          status: routing.status,
+          readyAt: routing.readyAt || null,
+          completedAt: routing.completedAt || null,
+        }
+      : null,
+    recipient: recipient
+      ? {
+          name: recipient.fullName || "Recipient",
+          address: recipient.address
+            ? {
+                city: recipient.address.city || "",
+                state: recipient.address.state || "",
+                postalCode: recipient.address.postalCode || "",
+                country: recipient.address.country || "",
+              }
+            : null,
+        }
+      : null,
+    deliveryConstraints: deliveryConstraints
+      ? {
+          deliveryWindow: deliveryConstraints.deliveryWindow || null,
+          accessInstructions: Array.isArray(
+            deliveryConstraints.accessInstructions,
+          )
+            ? deliveryConstraints.accessInstructions
+            : [],
+          dietaryConstraints: Array.isArray(
+            deliveryConstraints.dietaryConstraints,
+          )
+            ? deliveryConstraints.dietaryConstraints
+            : [],
+          deliveryInstructions: Array.isArray(
+            deliveryConstraints.deliveryInstructions,
+          )
+            ? deliveryConstraints.deliveryInstructions
+            : [],
+        }
+      : null,
+  };
+}
+
 export default {
   mapOrderResponse,
   mapOrderListResponse,
   mapClaimPreviewResponse,
   mapClaimCompletionResponse,
   mapDeliveryConstraintsResponse,
+  mapFulfillmentResponse,
+  mapRoutingRequestResponse,
+  mapReadinessResponse,
+  mapOperationsSummaryResponse,
 };

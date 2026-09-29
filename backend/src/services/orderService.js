@@ -114,10 +114,12 @@ export class OrderService {
       );
     }
 
-    // Business rule: Only CREATED or CLAIM_PENDING orders can be cancelled by the sender
+    // Business rule: CREATED, CLAIM_PENDING, CLAIMED, or PROCESSING orders can be cancelled by sender
     const cancellableStatuses = [
       ORDER_STATUS.CREATED,
       ORDER_STATUS.CLAIM_PENDING,
+      ORDER_STATUS.CLAIMED,
+      ORDER_STATUS.PROCESSING,
     ];
     if (!cancellableStatuses.includes(existing.status)) {
       throw new ConflictError(
@@ -135,6 +137,22 @@ export class OrderService {
       orderId,
       ORDER_STATUS.CANCELLED,
     );
+
+    // Sync fulfillment record if it exists
+    try {
+      const { fulfillmentRepository } =
+        await import("../repositories/fulfillmentRepository.js");
+      const existingFulfillment =
+        await fulfillmentRepository.findByOrderId(orderId);
+      if (existingFulfillment) {
+        await fulfillmentRepository.update(existingFulfillment.id, {
+          status: "CANCELLED",
+        });
+      }
+    } catch {
+      // Non-fatal if fulfillment record doesn't exist
+    }
+
     return cancelled;
   }
 }

@@ -120,17 +120,17 @@ Subsequent Submissions or Link Refreshes Rejected (409 Conflict: CLAIM_ALREADY_C
 
 ## Order Lifecycle
 
-| Status              | Phase              | Description                                                              |
-| :------------------ | :----------------- | :----------------------------------------------------------------------- |
-| `CREATED`           | Phase 3 (Active)   | Order created by sender; fully editable and cancellable.                 |
-| `CLAIM_PENDING`     | Phase 4 (Active)   | Claim token generated; order locked against edits, awaiting recipient.   |
-| `CLAIMED`           | Phase 5 (Active)   | Recipient submitted delivery address & preferences; claim completed.     |
-| `PROCESSING`        | Phase 6 (Upcoming) | Recipient address and constraints undergoing AI extraction & validation. |
-| `ROUTING_READY`     | Phase 6 (Upcoming) | Delivery constraints extracted; ready for courier routing.               |
-| `FULFILLMENT_READY` | Phase 7 (Upcoming) | Route finalized and queued for delivery.                                 |
-| `COMPLETED`         | Phase 7 (Upcoming) | Package delivered to recipient.                                          |
-| `CANCELLED`         | Phase 3 (Active)   | Order cancelled by sender; preserved in history.                         |
-| `EXPIRED`           | Phase 4 (Active)   | Claim link passed expiration date without consumption.                   |
+| Status              | Phase            | Description                                                               |
+| :------------------ | :--------------- | :------------------------------------------------------------------------ |
+| `CREATED`           | Phase 3 (Active) | Order created by sender; fully editable and cancellable.                  |
+| `CLAIM_PENDING`     | Phase 4 (Active) | Claim token generated; order locked against edits, awaiting recipient.    |
+| `CLAIMED`           | Phase 5 (Active) | Recipient submitted delivery address & preferences; claim completed.      |
+| `PROCESSING`        | Phase 8 (Active) | Operational processing initiated; address & delivery constraints checked. |
+| `ROUTING_READY`     | Phase 8 (Active) | Address validated; immutable routing request snapshot created.            |
+| `FULFILLMENT_READY` | Phase 8 (Active) | Routing plan ready; staged for final delivery dispatch handoff.           |
+| `COMPLETED`         | Phase 8 (Active) | Order fulfillment completed successfully.                                 |
+| `CANCELLED`         | Phase 3 / 8      | Order cancelled; preserved in history.                                    |
+| `EXPIRED`           | Phase 4 (Active) | Claim link passed expiration date without consumption.                    |
 
 ---
 
@@ -146,6 +146,14 @@ All order requests automatically scope to the server-controlled sender context (
 - `PATCH /api/orders/:orderId`: Update editable fields while in `CREATED` status.
 - `POST /api/orders/:orderId/cancel`: Cancel an order in `CREATED` or `CLAIM_PENDING` status.
 - `POST /api/orders/:orderId/claim`: Generate a secure, single-use claim link for an order.
+- `POST /api/orders/:orderId/process`: Move a claimed order into operational `PROCESSING`.
+- `GET /api/orders/:orderId/fulfillment`: Retrieve fulfillment state for an order.
+- `GET /api/orders/:orderId/readiness`: Deterministically evaluate routing readiness rules.
+- `POST /api/orders/:orderId/routing-request`: Create an immutable routing request snapshot.
+- `GET /api/orders/:orderId/routing-request`: Retrieve routing request for an order.
+- `POST /api/orders/:orderId/fulfillment-ready`: Mark order staged for delivery dispatch.
+- `POST /api/orders/:orderId/complete`: Finalize fulfillment and mark order `COMPLETED`.
+- `GET /api/orders/:orderId/operations`: Consolidated operational summary with sensitive PII filtered.
 
 ### 2. Recipient Claim Endpoints (`/api/claims`)
 
@@ -376,7 +384,8 @@ Open `http://localhost:5173/deliveries` to create orders and generate claim link
 | **Phase 5**   | Recipient Claim Flow (Address Form & Preferences Intake) | **Completed** |
 | **Phase 6**   | Security Hardening & Rate Limiting                       | **Completed** |
 | **Phase 7**   | LangChain & Pydantic AI Extraction (87 Tests Passing)    | **Completed** |
-| **Phase 8**   | Fulfillment Readiness & Operations Dispatch              | Queued        |
+| **Phase 8**   | Fulfillment Readiness & Operations (109 Tests Passing)   | **Completed** |
+| **Phase 9**   | Sender & Operations Dashboard                            | Queued        |
 
 ---
 

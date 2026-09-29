@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Modal from "../ui/Modal.jsx";
 import Button from "../ui/Button.jsx";
 import OrderStatusBadge from "./OrderStatusBadge.jsx";
@@ -16,6 +16,10 @@ import {
   ExternalLink,
   KeyRound,
   RefreshCw,
+  Truck,
+  CheckCircle2,
+  RotateCw,
+  Compass,
 } from "lucide-react";
 import { mapOrderError, orderService } from "../../services/order.service.js";
 
@@ -37,24 +41,64 @@ export function OrderDetailModal({
   const [copied, setCopied] = useState(false);
   const [localStatus, setLocalStatus] = useState(order?.status);
 
-  // Sync local status when order changes
-  React.useEffect(() => {
+  // Phase 8 Operational Fulfillment & Routing state
+  const [opsSummary, setOpsSummary] = useState(null);
+  const [readiness, setReadiness] = useState(null);
+  const [isOpsLoading, setIsOpsLoading] = useState(false);
+  const [opsActionLoading, setOpsActionLoading] = useState(false);
+  const [opsError, setOpsError] = useState(null);
+
+  const currentStatus = localStatus || order?.status;
+  const isOperational = [
+    "CLAIMED",
+    "PROCESSING",
+    "ROUTING_READY",
+    "FULFILLMENT_READY",
+    "COMPLETED",
+  ].includes(currentStatus);
+
+  const loadOpsData = async () => {
+    if (!order?.id || !isOperational) return;
+    setIsOpsLoading(true);
+    try {
+      const [summaryData, readinessData] = await Promise.all([
+        orderService.getOperationsSummary(order.id).catch(() => null),
+        orderService.getReadiness(order.id).catch(() => null),
+      ]);
+      setOpsSummary(summaryData);
+      setReadiness(readinessData);
+    } catch {
+      // Non-fatal
+    } finally {
+      setIsOpsLoading(false);
+    }
+  };
+
+  // Sync state when order changes or modal opens
+  useEffect(() => {
     setLocalStatus(order?.status);
     setGeneratedClaim(null);
     setClaimError(null);
     setCopied(false);
     setConfirmCancelOpen(false);
-  }, [order?.id, order?.status]);
+    setOpsError(null);
+
+    if (isOpen && order?.id && isOperational) {
+      loadOpsData();
+    }
+  }, [order?.id, order?.status, isOpen]);
 
   if (!order) return null;
 
   const itemName =
     typeof order.item === "object" ? order.item.name : order.item;
   const itemDesc = typeof order.item === "object" ? order.item.description : "";
-  const currentStatus = localStatus || order.status;
   const isEditable = currentStatus === "CREATED";
   const isCancellable =
-    currentStatus === "CREATED" || currentStatus === "CLAIM_PENDING";
+    currentStatus === "CREATED" ||
+    currentStatus === "CLAIM_PENDING" ||
+    currentStatus === "CLAIMED" ||
+    currentStatus === "PROCESSING";
   const isClaimEligible =
     currentStatus === "CREATED" || currentStatus === "CLAIM_PENDING";
 
@@ -92,7 +136,6 @@ export function OrderDetailModal({
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
-      // Fallback if clipboard API is blocked
       const input = document.getElementById("claim-url-input");
       if (input) {
         input.select();
@@ -100,6 +143,63 @@ export function OrderDetailModal({
         setCopied(true);
         setTimeout(() => setCopied(false), 2500);
       }
+    }
+  };
+
+  // Operational Transitions
+  const handleStartProcessing = async () => {
+    setOpsActionLoading(true);
+    setOpsError(null);
+    try {
+      await orderService.startProcessing(order.id);
+      setLocalStatus("PROCESSING");
+      await loadOpsData();
+    } catch (err) {
+      setOpsError(mapOrderError(err));
+    } finally {
+      setOpsActionLoading(false);
+    }
+  };
+
+  const handleCreateRouting = async () => {
+    setOpsActionLoading(true);
+    setOpsError(null);
+    try {
+      await orderService.createRoutingRequest(order.id);
+      setLocalStatus("ROUTING_READY");
+      await loadOpsData();
+    } catch (err) {
+      setOpsError(mapOrderError(err));
+    } finally {
+      setOpsActionLoading(false);
+    }
+  };
+
+  const handleMarkFulfillmentReady = async () => {
+    setOpsActionLoading(true);
+    setOpsError(null);
+    try {
+      await orderService.markFulfillmentReady(order.id);
+      setLocalStatus("FULFILLMENT_READY");
+      await loadOpsData();
+    } catch (err) {
+      setOpsError(mapOrderError(err));
+    } finally {
+      setOpsActionLoading(false);
+    }
+  };
+
+  const handleCompleteOrder = async () => {
+    setOpsActionLoading(true);
+    setOpsError(null);
+    try {
+      await orderService.completeOrder(order.id);
+      setLocalStatus("COMPLETED");
+      await loadOpsData();
+    } catch (err) {
+      setOpsError(mapOrderError(err));
+    } finally {
+      setOpsActionLoading(false);
     }
   };
 
@@ -124,19 +224,17 @@ export function OrderDetailModal({
           {itemDesc && <p className="detail-description-text">{itemDesc}</p>}
         </div>
 
-        {/* Specifications Grid */}
+        {/* Specs Grid */}
         <div className="detail-specs-grid">
           <div className="spec-card">
             <span className="spec-label">Quantity</span>
-            <span className="spec-value">
-              {order.quantity} item{order.quantity > 1 ? "s" : ""}
-            </span>
+            <span className="spec-value">{order.quantity} units</span>
           </div>
 
           <div className="spec-card">
-            <span className="spec-label">Delivery Window</span>
+            <span className="spec-label">Delivery Timeframe</span>
             <span className="spec-value">
-              {order.deliveryTimeframe || "Standard / Flexible"}
+              {order.deliveryTimeframe || "Standard Delivery"}
             </span>
           </div>
 
@@ -144,7 +242,7 @@ export function OrderDetailModal({
             <span className="spec-label">Created At</span>
             <span className="spec-value">
               {order.createdAt
-                ? new Date(order.createdAt).toLocaleString()
+                ? new Date(order.createdAt).toLocaleDateString()
                 : "N/A"}
             </span>
           </div>
@@ -260,14 +358,157 @@ export function OrderDetailModal({
           </div>
         )}
 
-        {/* Address Privacy Notice for other statuses */}
-        {!isClaimEligible && (
-          <div className="detail-privacy-banner">
-            <ShieldCheck size={16} className="privacy-icon" />
-            <p>
-              <strong>Status {currentStatus}:</strong> Claim links can only be
-              generated for orders in CREATED or CLAIM_PENDING status.
-            </p>
+        {/* Phase 8 Operational Fulfillment & Routing Section */}
+        {isOperational && (
+          <div className="detail-operational-section">
+            <div className="operational-header">
+              <div className="operational-title-box">
+                <Truck size={18} className="text-primary" />
+                <span>Delivery & Fulfillment Progress</span>
+              </div>
+              <OrderStatusBadge status={currentStatus} size="sm" />
+            </div>
+
+            <div className="operational-checklist">
+              <div
+                className={`operational-check-item ${readiness?.checks?.orderClaimed || currentStatus !== "CREATED" ? "complete" : ""}`}
+              >
+                <CheckCircle2
+                  size={15}
+                  className={
+                    readiness?.checks?.orderClaimed ||
+                    currentStatus !== "CREATED"
+                      ? "check-icon-done"
+                      : "check-icon-pending"
+                  }
+                />
+                <span>✓ Claimed by recipient</span>
+              </div>
+
+              <div
+                className={`operational-check-item ${readiness?.checks?.recipientFound ? "complete" : ""}`}
+              >
+                <CheckCircle2
+                  size={15}
+                  className={
+                    readiness?.checks?.recipientFound
+                      ? "check-icon-done"
+                      : "check-icon-pending"
+                  }
+                />
+                <span>
+                  ✓ Recipient details confirmed{" "}
+                  {opsSummary?.recipient?.name
+                    ? `(${opsSummary.recipient.name})`
+                    : ""}
+                </span>
+              </div>
+
+              <div
+                className={`operational-check-item ${readiness?.checks?.addressComplete ? "complete" : ""}`}
+              >
+                <CheckCircle2
+                  size={15}
+                  className={
+                    readiness?.checks?.addressComplete
+                      ? "check-icon-done"
+                      : "check-icon-pending"
+                  }
+                />
+                <span>
+                  ✓ Destination address ready{" "}
+                  {opsSummary?.recipient?.address?.city
+                    ? `(${opsSummary.recipient.address.city}, ${opsSummary.recipient.address.state})`
+                    : ""}
+                </span>
+              </div>
+
+              <div
+                className={`operational-check-item ${readiness?.checks?.deliveryConstraintsEvaluated ? "complete" : ""}`}
+              >
+                <CheckCircle2
+                  size={15}
+                  className={
+                    readiness?.checks?.deliveryConstraintsEvaluated
+                      ? "check-icon-done"
+                      : "check-icon-pending"
+                  }
+                />
+                <span>
+                  ✓ Delivery constraints:{" "}
+                  {readiness?.constraintsStatus === "AVAILABLE"
+                    ? "Extracted"
+                    : readiness?.constraintsStatus === "NO_NOTES"
+                      ? "None specified"
+                      : readiness?.constraintsStatus === "EXTRACTION_FAILED"
+                        ? "Standard delivery (extraction failed)"
+                        : "Evaluated"}
+                </span>
+              </div>
+            </div>
+
+            {opsError && <p className="confirm-error">{opsError}</p>}
+
+            <div className="operational-action-bar">
+              <div className="operational-status-msg">
+                {currentStatus === "CLAIMED" &&
+                  "Claimed. Ready to enter processing."}
+                {currentStatus === "PROCESSING" &&
+                  (readiness?.isReady
+                    ? "Ready for routing dispatch plan."
+                    : "Validating recipient delivery address...")}
+                {currentStatus === "ROUTING_READY" &&
+                  "Routing request created and verified."}
+                {currentStatus === "FULFILLMENT_READY" &&
+                  "Ready for final delivery handoff."}
+                {currentStatus === "COMPLETED" &&
+                  "✓ Delivery completed successfully."}
+              </div>
+
+              <div>
+                {currentStatus === "CLAIMED" && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleStartProcessing}
+                    isLoading={opsActionLoading}
+                  >
+                    Start Processing
+                  </Button>
+                )}
+                {currentStatus === "PROCESSING" && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleCreateRouting}
+                    isLoading={opsActionLoading}
+                    disabled={!readiness?.isReady}
+                  >
+                    Create Routing Request
+                  </Button>
+                )}
+                {currentStatus === "ROUTING_READY" && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleMarkFulfillmentReady}
+                    isLoading={opsActionLoading}
+                  >
+                    Mark Fulfillment Ready
+                  </Button>
+                )}
+                {currentStatus === "FULFILLMENT_READY" && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleCompleteOrder}
+                    isLoading={opsActionLoading}
+                  >
+                    Complete Delivery
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
         )}
 

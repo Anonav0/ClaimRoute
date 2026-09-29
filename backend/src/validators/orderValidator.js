@@ -11,6 +11,10 @@ const PROTECTED_FIELDS = [
   "recipient",
   "tokenHash",
   "claimToken",
+  "processingStartedAt",
+  "routingReadyAt",
+  "fulfillmentReadyAt",
+  "completedAt",
 ];
 
 /**
