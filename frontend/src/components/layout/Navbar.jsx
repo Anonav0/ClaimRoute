@@ -38,6 +38,12 @@ export function Navbar({ healthState, onClaimClick }) {
           >
             Your Deliveries
           </Link>
+          <Link
+            to="/dashboard"
+            className={`nav-link ${location.pathname.startsWith("/dashboard") ? "active" : ""}`}
+          >
+            Dashboard
+          </Link>
           <a href="/#how-it-works" className="nav-link">
             How It Works
           </a>
@@ -95,6 +101,13 @@ export function Navbar({ healthState, onClaimClick }) {
               onClick={() => setMobileMenuOpen(false)}
             >
               Your Deliveries
+            </Link>
+            <Link
+              to="/dashboard"
+              className="mobile-nav-link"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Dashboard
             </Link>
             <a
               href="/#how-it-works"

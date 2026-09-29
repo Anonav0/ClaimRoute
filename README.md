@@ -2,7 +2,7 @@
 
 ClaimRoute is a fulfillment and delivery-routing platform where a sender can initiate a fulfillment or gift order without having to solicit or store the recipient's sensitive delivery address upfront. Instead, the recipient receives a one-time cryptographic claim link to supply their delivery preferences and address securely.
 
-> **Current Status**: **Phase 7 (AI Delivery Extraction)**. This repository contains the complete full-stack foundation, consumer-first warm UI, Cloud Firestore persistence, sender order management, secure claim token infrastructure, recipient claim intake, security hardening, and the **AI Delivery Extraction Pipeline** (LangChain orchestration, LLM provider integration, Pydantic v2 schema validation, anti-prompt injection defenses, asynchronous non-blocking claim triggering, and idempotent Cloud Firestore persistence).
+> **Current Status**: **Phase 9 (Sender & Operations Dashboard)**. This repository contains the complete full-stack foundation, consumer-first warm UI, Cloud Firestore persistence, sender order management, secure claim token infrastructure, recipient claim intake, security hardening, AI Delivery Extraction Pipeline, Fulfillment Readiness & Operations state machine, and the **Sender & Operations Dashboard** (multi-status aggregation, role-based phone masking, high-priority attention alerts, multi-dimensional filtering, limit/cursor pagination, and responsive desktop/mobile UI).
 
 ---
 
@@ -368,7 +368,37 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173/deliveries` to create orders and generate claim links. Open `/claim/<token>` to fill out the recipient claim form.
+Open `http://localhost:5173/deliveries` to create orders and generate claim links. Open `/claim/<token>` to fill out the recipient claim form. Open `/dashboard` to inspect aggregated order summaries, attention-required alerts, and multi-dimensional filters.
+
+---
+
+## Sender & Operations Dashboard (Phase 9)
+
+Phase 9 introduces an operational visibility and monitoring layer uniting Orders, Claim state, Recipient status, AI constraint extraction state, Routing readiness, and Fulfillment progression:
+
+```text
+Dashboard Endpoints (REST API)
+   ├─ GET /api/dashboard/summary          (Total, Pending Claims, Action Required, Ready, In Transit, Delivered)
+   ├─ GET /api/dashboard/orders           (Status filters, live search, limit/cursor pagination)
+   └─ GET /api/dashboard/orders/:orderId  (Aggregated order, claim, recipient, constraints, route, timeline)
+          ↓
+Authorization & Data Masking Engine
+   ├─ SENDER: Scoped strictly to own orders; recipient phone numbers masked (+1 ••••••4567)
+   └─ OPERATIONS / ADMIN: Tenant-wide visibility; full unmasked recipient contact data
+          ↓
+Modern Responsive UI (/dashboard)
+   ├─ Summary Metric Cards (6 cards with active filter state)
+   ├─ Attention Required Section (AI extraction failures, blocked routing, stale pending claims)
+   ├─ Multi-Dimensional Filter Bar (Primary status pills, search query, secondary dropdowns)
+   ├─ Desktop Table View & Mobile/Tablet Card View
+   └─ Operational Detail Modal (Full multi-entity lifecycle timeline & quick action buttons)
+```
+
+### Privacy & Authorization Matrix
+
+- **Role Scoping**: `SENDER` can only retrieve orders they created; cross-sender queries are rejected with `403 Forbidden`. `OPERATIONS` and `ADMIN` roles access all tenant orders.
+- **DTO Sanitization**: Raw claim tokens, token hashes, and internal database keys are never exposed in any dashboard endpoint.
+- **Phone Masking**: Phone numbers are masked (`+1 ••••••4567`) for senders to maintain recipient privacy.
 
 ---
 
@@ -385,7 +415,8 @@ Open `http://localhost:5173/deliveries` to create orders and generate claim link
 | **Phase 6**   | Security Hardening & Rate Limiting                       | **Completed** |
 | **Phase 7**   | LangChain & Pydantic AI Extraction (87 Tests Passing)    | **Completed** |
 | **Phase 8**   | Fulfillment Readiness & Operations (109 Tests Passing)   | **Completed** |
-| **Phase 9**   | Sender & Operations Dashboard                            | Queued        |
+| **Phase 9**   | Sender & Operations Dashboard (120 Tests Passing)        | **Completed** |
+| **Phase 10**  | Frontend Integration & UI Polish                         | Queued        |
 
 ---
 

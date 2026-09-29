@@ -32,6 +32,21 @@ export class OrderRepository extends BaseRepository {
   }
 
   /**
+   * Find all orders across senders (for OPERATIONS and ADMIN roles), sorted newest first
+   * @returns {Promise<Array<Object>>}
+   */
+  async findAllOrders() {
+    const snap = await this.collection.get();
+    const orders = snap.docs.map(formatDoc);
+
+    return orders.sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeB - timeA;
+    });
+  }
+
+  /**
    * Find a specific order ensuring sender scoping
    * @param {string} orderId
    * @param {string} senderId

@@ -11,6 +11,7 @@ import Footer from "./components/layout/Footer.jsx";
 import HomePage from "./pages/HomePage.jsx";
 import OrdersPage from "./pages/OrdersPage.jsx";
 import ClaimPage from "./pages/ClaimPage.jsx";
+import DashboardPage from "./pages/DashboardPage.jsx";
 import { useHealthCheck } from "./hooks/useHealthCheck.js";
 import Modal from "./components/ui/Modal.jsx";
 import Button from "./components/ui/Button.jsx";
@@ -48,6 +49,11 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<HomePage healthState={healthState} />} />
           <Route path="/deliveries" element={<OrdersPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route
+            path="/dashboard/orders/:orderId"
+            element={<DashboardPage />}
+          />
           <Route path="/claim/:token" element={<ClaimPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
